@@ -1,4 +1,4 @@
-module XBRL
+module XbrlXML
 
 using EzXML
 
