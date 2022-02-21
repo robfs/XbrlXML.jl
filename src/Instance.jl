@@ -108,7 +108,12 @@ end
 function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_url::Union{AbstractString,Nothing} = nothing)::XbrlInstance
     doc::EzXML.Document = readxml(instance_path)
     root::EzXML.Node = doc.root
-    schema_ref::EzXML.Node = findfirst("link:schemaRef", root)
+
+    ns_map::Dict{AbstractString,AbstractString} = Dict(namespaces(root))
+    delete!(ns_map, "")
+    ns_map["default"] = namespace(root)
+
+    schema_ref::EzXML.Node = findfirst("link:schemaRef", root, ns_map)
     schema_uri::AbstractString = schema_ref["xlink:href"]
     
     if startswith(schema_uri, "http")
@@ -121,9 +126,6 @@ function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
         taxonomy = parse_taxonomy(schema_path, cache)
     end
 
-    ns_map::Dict{AbstractString,AbstractString} = Dict(namespaces(root))
-    delete!(ns_map, "")
-    ns_map["default"] = namespace(root)
     context_dir = _parse_context_elements(findall("xbrli:context", root, NAME_SPACES), ns_map, taxonomy)
     unit_dir = _parse_unit_elements(findall("xbrli:unit", root, NAME_SPACES))
 
@@ -176,11 +178,12 @@ function parse_ixbrl(instance_path::AbstractString, cache::HttpCache, instance_u
 
     doc::EzXML.Document = readxml(instance_path)
     root::EzXML.Node = doc.root
+
     ns_map::Dict{AbstractString,AbstractString} = Dict(namespaces(root))
     delete!(ns_map, "")
     ns_map["default"] = namespace(root)
 
-    schema_ref::EzXML.Node = findfirst(".//link:schemaRef", root)
+    schema_ref::EzXML.Node = findfirst(".//link:schemaRef", root, ns_map)
     schema_uri::AbstractString = schema_ref["xlink:href"]
 
     if startswith(schema_uri, "http")
