@@ -4,7 +4,7 @@ include("uri_resolver.jl")
 
 using ..EzXML, ..Cache, ..Taxonomy, Dates
 
-export XbrlParser, parse_instance
+export parse_instance
 
 NAME_SPACES = Dict([
     "xsd" => "http://www.w3.org/2001/XMLSchema",
@@ -332,18 +332,14 @@ function _parse_unit_elements(unit_elements::Vector{EzXML.Node})::Dict{AbstractS
 end
 
 
-struct XbrlParser
-    cache::HttpCache
+function parse_instance(cache::HttpCache, url::AbstractString)::XbrlInstance
+    split(url, ".")[end] == "xml" && return parse_xbrl_url(url, cache)
+    return parse_ixbrl_url(url, cache)
 end
 
-function parse_instance(parser::XbrlParser, url::AbstractString)::XbrlInstance
-    split(url, ".")[end] == "xml" && return parse_xbrl_url(url, parser.cache)
-    return parse_ixbrl_url(url, parser.cache)
-end
-
-function parse_instance_locally(parser::XbrlParser, path::AbstractString, instance_url::Union{AbstractString,Nothing}=nothing)::XbrlInstance
-    split(path, ".")[end] == "xml" && return parse_xbrl(path, parser.cache, instance_url)
-    return parse_ixbrl(path, parser.cache, instance_url)
+function parse_instance_locally(cache::HttpCache, path::AbstractString, instance_url::Union{AbstractString,Nothing}=nothing)::XbrlInstance
+    split(path, ".")[end] == "xml" && return parse_xbrl(path, cache, instance_url)
+    return parse_ixbrl(path, cache, instance_url)
 end
 
 
