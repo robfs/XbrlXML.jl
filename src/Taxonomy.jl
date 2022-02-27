@@ -127,7 +127,7 @@ end
 function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union{String,Nothing}=nothing)::TaxonomySchema
 
     # Implement errors
-
+    ns_schema_map::Dict{String,String} = NS_SCHEMA_MAP
     doc::EzXML.Document = readxml(schema_path)
     root::EzXML.Node = doc.root
     target_ns::AbstractString = root["targetNamespace"]
@@ -229,7 +229,16 @@ function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union
             for root_locator in extended_link.root_locators
                 (schema_url, concept_id) = split(root_locator.href, "#")
                 c_taxonomy::Union{TaxonomySchema,Nothing} = get_taxonomy(taxonomy, schema_url)
-                c_taxonomy isa Nothing && continue
+
+                if c_taxonomy isa Nothing
+                    if schema_url in values(ns_schema_map)
+                        c_taxonomy = parse_taxonomy_url(schema_url, cache)
+                        push!(taxonomy.imports, c_taxonomy)
+                    else
+                        continue
+                    end
+                end
+
                 concept::Concept = c_taxonomy.concepts[concept_id]
 
                 for label_arc in root_locator.children
