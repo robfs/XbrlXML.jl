@@ -1,6 +1,6 @@
 module Instance
 
-include("uri_resolver.jl")
+include("uri_helper.jl")
 
 using ..EzXML, ..Cache, ..Taxonomy, Dates
 
@@ -76,12 +76,19 @@ struct DivideUnit <: AbstractUnit
     denominator::AbstractString
 end
 
+struct Footnote
+    content::AbstractString
+    lang::AbstractString
+end
+
+
 abstract type AbstractFact end
 
 struct NumericFact <: AbstractFact
     concept::Concept
     context::AbstractContext
     value::Real
+    footnote::Union{Footnote,Nothing}
     unit::AbstractUnit
     decimals::Union{Int,Nothing}
 end
@@ -90,6 +97,7 @@ struct TextFact <: AbstractFact
     concept::Concept
     context::AbstractContext
     value::AbstractString
+    footnote::Union{Footnote,Nothing}
 end
 
 struct XbrlInstance
@@ -115,7 +123,7 @@ function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
 
     schema_ref::EzXML.Node = findfirst("link:schemaRef", root, NAME_SPACES)
     schema_uri::AbstractString = schema_ref["xlink:href"]
-    
+
     if startswith(schema_uri, "http")
         taxonomy::TaxonomySchema = parse_taxonomy_url(schema_uri, cache)
     elseif !(instance_url isa Nothing)
@@ -126,27 +134,27 @@ function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
         taxonomy = parse_taxonomy(schema_path, cache)
     end
 
-    context_dir = _parse_context_elements(findall("xbrli:context", root, NAME_SPACES), ns_map, taxonomy)
+    context_dir = _parse_context_elements(findall("xbrli:context", root, NAME_SPACES), ns_map, taxonomy, cache)
     unit_dir = _parse_unit_elements(findall("xbrli:unit", root, NAME_SPACES))
 
     facts::Vector{AbstractFact} = []
     for fact_elem in eachelement(root)
-        
+
         if occursin("context", fact_elem.name) || occursin("unit", fact_elem.name) || occursin("schemaRef", fact_elem.name)
             continue
         end
-        if !(occursin("contextRef", fact_elem.name))
+        if !haskey(fact_elem, "contextRef")
             continue
         end
         if fact_elem.content == "" || length(strip(fact_elem.content)) == 0
             continue
         end
 
-        (taxonomy_ns, concept_name) = split(fact_elem.name, "}")
-        taxonomy_ns = replace(taxonomy_ns, "{" => "")
+        taxonomy_ns::AbstractString = namespace(fact_elem)
+        concept_name::AbstractString = fact_elem.name
         tax = get_taxonomy(taxonomy, taxonomy_ns)
         if tax isa Nothing
-            tax = parse_common_taxonomy(cache, taxonomy_ns)
+            tax = _load_common_taxonomy(cache, taxonomy_ns, taxonomy)
         end
 
         concept::Concept = tax.concepts[tax.name_id_map[concept_name]]
@@ -155,10 +163,10 @@ function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
         if haskey(fact_elem, "unitRef")
             unit::AbstractUnit = unit_dir[fact_elem["unitRef"]]
             decimals_text::AbstractString = strip(fact_elem["decimals"])
-            decimals::Int = lowercase(decimals_text) == "inf" ? nothing : trunc(Int, parse(Float64, decimals_text))
-            fact::AbstractFact = NumericFact(concept, context, strip(fact_elem.content), unit, decimals)
+            decimals::Union{Int,Nothing} = lowercase(decimals_text) == "inf" ? nothing : trunc(Int, parse(Float64, decimals_text))
+            fact::AbstractFact = NumericFact(concept, context, parse(Float64, strip(fact_elem.content)), nothing, unit, decimals)
         else
-            fact = TextFact(concept, context, strip(fact_elem.content))
+            fact = TextFact(concept, context, strip(fact_elem.content), nothing)
         end
 
         push!(facts, fact)
@@ -199,7 +207,7 @@ function parse_ixbrl(instance_path::AbstractString, cache::HttpCache, instance_u
     xbrl_resources::EzXML.Node = findfirst(".//ix:resources", root, ns_map)
     xbrl_resources isa Nothing && throw(error("No resources"))
 
-    context_dir = _parse_context_elements(findall("xbrli:context", xbrl_resources, NAME_SPACES), ns_map, taxonomy)
+    context_dir = _parse_context_elements(findall("xbrli:context", xbrl_resources, NAME_SPACES), ns_map, taxonomy, cache)
     unit_dir = _parse_unit_elements(findall("xbrli:unit", xbrl_resources, NAME_SPACES))
 
     facts::Vector{AbstractFact} = []
@@ -207,12 +215,15 @@ function parse_ixbrl(instance_path::AbstractString, cache::HttpCache, instance_u
     append!(fact_elements, findall(".//ix:nonNumeric", root, ns_map))
 
     for fact_elem in fact_elements
+        _update_ns_map!(ns_map, namespaces(fact_elem))
         if fact_elem.content == "" || length(strip(fact_elem.content)) == 0
             continue
         end
         (taxonomy_prefix, concept_name) = split(fact_elem["name"], ":")
         tax = get_taxonomy(taxonomy, ns_map[taxonomy_prefix])
-        tax isa Nothing && throw(error("No Taxonomy"))
+        if tax isa Nothing
+            tax = _load_common_taxonomy(cache, ns_map[taxonomy_prefix], taxonomy)
+        end
         concept::Concept = tax.concepts[tax.name_id_map[concept_name]]
         context::AbstractContext = context_dir[fact_elem["contextRef"]]
         fact_value::Union{AbstractString,Real} = _extract_ixbrl_value(fact_elem)
@@ -222,9 +233,9 @@ function parse_ixbrl(instance_path::AbstractString, cache::HttpCache, instance_u
             decimals_text::AbstractString = strip(fact_elem["decimals"])
             decimals::Union{Int,Nothing} = lowercase(decimals_text) == "inf" ? nothing : trunc(Int, parse(Float64, decimals_text))
 
-            fact::AbstractFact = NumericFact(concept, context, fact_value, unit, decimals)
+            fact::AbstractFact = NumericFact(concept, context, fact_value, nothing, unit, decimals)
         else
-            fact = TextFact(concept, context, "$(fact_value)")
+            fact = TextFact(concept, context, "$(fact_value)", nothing)
         end
         push!(facts, fact)
     end
@@ -233,6 +244,7 @@ function parse_ixbrl(instance_path::AbstractString, cache::HttpCache, instance_u
 end
 
 function _extract_ixbrl_value(fact_elem::EzXML.Node)::Union{Real,AbstractString}
+
     value_scale::Int = haskey(fact_elem, "scale") ? trunc(Int, parse(Float64, fact_elem["scale"])) : 0
     value_sign::Union{AbstractString,Nothing} = haskey(fact_elem, "sign") ? fact_elem["sign"] : nothing
 
@@ -250,7 +262,12 @@ function _extract_ixbrl_value(fact_elem::EzXML.Node)::Union{Real,AbstractString}
         elseif value_format == "numdotdecimal"
             raw_value = parse(Float64, replace(replace(strip(fact_elem.content), " " => ""), "," => ""))
         elseif value_format == "datemonthdayen"
-            raw_value = Dates.format(Date(fact_elem.content, dateformat"U d"), "--m-dd")
+            delimiter::String = occursin("-", fact_elem.content) ? "-" : " "
+            monthformat::String = length(split(fact_elem.content, delimiter)[1]) == 3 ? "u" : "U"
+            datefmt::DateFormat = DateFormat(monthformat * delimiter * "d")
+            raw_value = Dates.format(Date(fact_elem.content, datefmt), "--m-dd")
+        elseif value_format == "numwordsen" && lowercase(strip(fact_elem.content)) in ("no", "none")
+            raw_value = 0.0
         else
             raw_value = strip(fact_elem.content)
         end
@@ -258,6 +275,9 @@ function _extract_ixbrl_value(fact_elem::EzXML.Node)::Union{Real,AbstractString}
 
     if raw_value isa Float64
         raw_value *= (10 ^ value_scale)
+        if abs(raw_value) > 1e6
+            raw_value = round(raw_value)
+        end
         if value_sign == "-"
             raw_value *= -1
         end
@@ -267,7 +287,12 @@ function _extract_ixbrl_value(fact_elem::EzXML.Node)::Union{Real,AbstractString}
 end
 
 
-function _parse_context_elements(context_elements::Vector{EzXML.Node}, ns_map::Dict{AbstractString,AbstractString}, taxonomy::TaxonomySchema)::Dict{AbstractString,AbstractContext}
+function _parse_context_elements(
+    context_elements::Vector{EzXML.Node},
+    ns_map::Dict{AbstractString,AbstractString},
+    taxonomy::TaxonomySchema,
+    cache::HttpCache,
+)::Dict{AbstractString,AbstractContext}
     context_dict::Dict{AbstractString,AbstractContext} = Dict()
     for context_elem in context_elements
         context_id::AbstractString = context_elem["id"]
@@ -288,12 +313,17 @@ function _parse_context_elements(context_elements::Vector{EzXML.Node}, ns_map::D
         segment::Union{EzXML.Node,Nothing} = findfirst("xbrli:entity/xbrli:segment", context_elem, NAME_SPACES)
         if !(segment isa Nothing)
             for explicit_member_elem in findall("xbrldi:explicitMember", segment, NAME_SPACES)
+                _update_ns_map!(ns_map, namespaces(explicit_member_elem))
                 (dimension_prefix, dimension_concept_name) = split(strip(explicit_member_elem["dimension"]), ":")
                 (member_prefix, member_concept_name) = split(strip(explicit_member_elem.content), ":")
                 dimension_tax = get_taxonomy(taxonomy, ns_map[dimension_prefix])
-                dimension_tax isa Nothing && throw(error("Taxonomy not found"))
+                if dimension_tax isa Nothing
+                    dimension_tax = _load_common_taxonomy(cache, ns_map[dimension_prefix], taxonomy)
+                end
                 member_tax = member_prefix == dimension_prefix ? dimension_tax : get_taxonomy(taxonomy, ns_map[member_prefix])
-                member_tax isa Nothing && throw(error("Taxonomy not found"))
+                if member_tax isa Nothing
+                    member_tax = _load_common_taxonomy(cache, ns_map[member_prefix], taxonomy)
+                end
                 dimension_concept::Concept = dimension_tax.concepts[dimension_tax.name_id_map[dimension_concept_name]]
                 member_concept::Concept = member_tax.concepts[member_tax.name_id_map[member_concept_name]]
 
@@ -307,6 +337,14 @@ function _parse_context_elements(context_elements::Vector{EzXML.Node}, ns_map::D
 
     return context_dict
 
+end
+
+function _update_ns_map!(ns_map::Dict{AbstractString,AbstractString}, new_ns_map::Vector{Pair{T,T}}) where {T <: AbstractString}
+    for (prefix, ns) in new_ns_map
+        if !haskey(ns_map, prefix) && prefix != ""
+            ns_map[prefix] = ns
+        end
+    end
 end
 
 function _parse_unit_elements(unit_elements::Vector{EzXML.Node})::Dict{AbstractString,AbstractUnit}
@@ -331,15 +369,29 @@ function _parse_unit_elements(unit_elements::Vector{EzXML.Node})::Dict{AbstractS
     return unit_dict
 end
 
+function _load_common_taxonomy(cache::HttpCache, namespace::AbstractString, taxonomy::TaxonomySchema)::TaxonomySchema
+    tax = parse_common_taxonomy(cache, namespace)
+    tax isa Nothing && throw(error("Taxonomy not found"))
+    push!(taxonomy.imports, tax)
+    return tax
+end
 
 function parse_instance(cache::HttpCache, url::AbstractString)::XbrlInstance
-    split(url, ".")[end] == "xml" && return parse_xbrl_url(url, cache)
-    return parse_ixbrl_url(url, cache)
+    filetype::SubString = split(url, ".")[end]
+    if filetype == "xml" || filetype == "xbrl"
+        return parse_xbrl_url(url, cache)
+    else
+        return parse_ixbrl_url(url, cache)
+    end
 end
 
 function parse_instance_locally(cache::HttpCache, path::AbstractString, instance_url::Union{AbstractString,Nothing}=nothing)::XbrlInstance
-    split(path, ".")[end] == "xml" && return parse_xbrl(path, cache, instance_url)
-    return parse_ixbrl(path, cache, instance_url)
+    filetype::SubString = split(path, ".")[end]
+    if filetype == "xml" || filetype == "xbrl"
+        return parse_xbrl(path, cache, instance_url)
+    else
+        return parse_ixbrl(path, cache, instance_url)
+    end
 end
 
 
