@@ -2,9 +2,11 @@ module Taxonomy
 
 using Memoize, LRUCache
 
-include("uri_resolver.jl")
+include("uri_helper.jl")
 
 using ..EzXML, ..Cache, ..Linkbases
+
+import HTTP: unescapeuri
 
 export Concept, TaxonomySchema, parse_taxonomy, parse_common_taxonomy, parse_taxonomy_url, get_taxonomy
 
@@ -15,6 +17,44 @@ NAME_SPACES = Dict([
     "xbrldt" => "http://xbrl.org/2005/xbrldt"
 ])
 
+NS_SCHEMA_MAP = Dict([
+        "http://fasb.org/srt/2018-01-31" => "http://xbrl.fasb.org/srt/2018/elts/srt-2018-01-31.xsd",
+        "http://fasb.org/srt/2019-01-31" => "http://xbrl.fasb.org/srt/2019/elts/srt-2019-01-31.xsd",
+        "http://fasb.org/srt/2020-01-31" => "http://xbrl.fasb.org/srt/2020/elts/srt-2020-01-31.xsd",
+
+        "http://xbrl.sec.gov/stpr/2018-01-31" => "https://xbrl.sec.gov/stpr/2018/stpr-2018-01-31.xsd",
+        # Replace draft taxonomy with official STPR 2021 one once it is released
+        "http://xbrl.sec.gov/stpr/2021" => "https://xbrl.sec.gov/stpr/2021/stpr-2021.xsd",
+
+        "http://xbrl.sec.gov/country/2017-01-31" => "https://xbrl.sec.gov/country/2017/country-2017-01-31.xsd",
+        "http://xbrl.sec.gov/country/2020-01-31" => "https://xbrl.sec.gov/country/2020/country-2020-01-31.xsd",
+
+        "http://xbrl.us/invest/2009-01-31" => "https://taxonomies.xbrl.us/us-gaap/2009/non-gaap/invest-2009-01-31.xsd",
+        "http://xbrl.sec.gov/invest/2011-01-31" => "https://xbrl.sec.gov/invest/2011/invest-2011-01-31.xsd",
+        "http://xbrl.sec.gov/invest/2012-01-31" => "https://xbrl.sec.gov/invest/2012/invest-2012-01-31.xsd",
+        "http://xbrl.sec.gov/invest/2013-01-31" => "https://xbrl.sec.gov/invest/2013/invest-2013-01-31.xsd",
+
+        "http://xbrl.sec.gov/dei/2011-01-31" => "https://xbrl.sec.gov/dei/2011/dei-2011-01-31.xsd",
+        "http://xbrl.sec.gov/dei/2012-01-31" => "https://xbrl.sec.gov/dei/2012/dei-2012-01-31.xsd",
+        "http://xbrl.sec.gov/dei/2013-01-31" => "https://xbrl.sec.gov/dei/2013/dei-2013-01-31.xsd",
+        "http://xbrl.sec.gov/dei/2014-01-31" => "https://xbrl.sec.gov/dei/2014/dei-2014-01-31.xsd",
+        "http://xbrl.sec.gov/dei/2018-01-31" => "https://xbrl.sec.gov/dei/2018/dei-2018-01-31.xsd",
+        "http://xbrl.sec.gov/dei/2019-01-31" => "https://xbrl.sec.gov/dei/2019/dei-2019-01-31.xsd",
+        "http://xbrl.sec.gov/dei/2020-01-31" => "https://xbrl.sec.gov/dei/2020/dei-2020-01-31.xsd",
+        "http://xbrl.sec.gov/dei/2021" => "https://xbrl.sec.gov/dei/2021/dei-2021.xsd",
+
+        "http://fasb.org/us-gaap/2011-01-31" => "http://xbrl.fasb.org/us-gaap/2011/elts/us-gaap-2011-01-31.xsd",
+        "http://fasb.org/us-gaap/2012-01-31" => "http://xbrl.fasb.org/us-gaap/2012/elts/us-gaap-2012-01-31.xsd",
+        "http://fasb.org/us-gaap/2013-01-31" => "http://xbrl.fasb.org/us-gaap/2013/elts/us-gaap-2013-01-31.xsd",
+        "http://fasb.org/us-gaap/2014-01-31" => "http://xbrl.fasb.org/us-gaap/2014/elts/us-gaap-2014-01-31.xsd",
+        "http://fasb.org/us-gaap/2015-01-31" => "http://xbrl.fasb.org/us-gaap/2015/elts/us-gaap-2015-01-31.xsd",
+        "http://fasb.org/us-gaap/2016-01-31" => "http://xbrl.fasb.org/us-gaap/2016/elts/us-gaap-2016-01-31.xsd",
+        "http://fasb.org/us-gaap/2017-01-31" => "http://xbrl.fasb.org/us-gaap/2017/elts/us-gaap-2017-01-31.xsd",
+        "http://fasb.org/us-gaap/2018-01-31" => "http://xbrl.fasb.org/us-gaap/2018/elts/us-gaap-2018-01-31.xsd",
+        "http://fasb.org/us-gaap/2019-01-31" => "http://xbrl.fasb.org/us-gaap/2019/elts/us-gaap-2019-01-31.xsd",
+        "http://fasb.org/us-gaap/2020-01-31" => "http://xbrl.fasb.org/us-gaap/2020/elts/us-gaap-2020-01-31.xsd",
+        "http://fasb.org/us-gaap/2021-01-31" => "http://xbrl.fasb.org/us-gaap/2021/elts/us-gaap-2021-01-31.xsd",
+    ])
 
 mutable struct Concept
     xml_id::AbstractString
@@ -27,9 +67,10 @@ mutable struct Concept
     nillable::Union{Bool, Nothing}
     period_type::Union{AbstractString, Nothing}
     balance::Union{AbstractString, Nothing}
+    labels::Vector{Label}
 
     Concept(role_id::AbstractString, uri::Union{AbstractString,Nothing}, definition::AbstractString) = new(
-        role_id, uri, definition, nothing, nothing, nothing, nothing
+        role_id, uri, definition, nothing, nothing, nothing, nothing, nothing, nothing, nothing, []
     )
 end
 
@@ -63,46 +104,20 @@ mutable struct TaxonomySchema
     )
 end
 
-function get_taxonomy(schema::TaxonomySchema, namespace::AbstractString)::Union{TaxonomySchema, Nothing}
-    schema.namespace == namespace && return schema
+function get_taxonomy(schema::TaxonomySchema, url::AbstractString)::Union{TaxonomySchema, Nothing}
+    if compare_uri(schema.namespace, url) || compare_uri(schema.schema_url, url)
+        return schema
+    end
     for imported_tax in schema.imports
-        result::Union{TaxonomySchema, Nothing} = get_taxonomy(imported_tax, namespace)
+        result::Union{TaxonomySchema, Nothing} = get_taxonomy(imported_tax, url)
         !(result isa Nothing) && return result
     end
     return nothing
 end
 
 function parse_common_taxonomy(cache::HttpCache, namespace::AbstractString)::Union{TaxonomySchema, Nothing}
-    ns_schema_map::Dict = Dict([
-        "http://fasb.org/srt/2018-01-31" => "http://xbrl.fasb.org/srt/2018/elts/srt-2018-01-31.xsd",
-        "http://fasb.org/srt/2019-01-31" => "http://xbrl.fasb.org/srt/2019/elts/srt-2019-01-31.xsd",
-        "http://fasb.org/srt/2020-01-31" => "http://xbrl.fasb.org/srt/2020/elts/srt-2020-01-31.xsd",
-
-        "http://xbrl.us/invest/2009-01-31" => "https://taxonomies.xbrl.us/us-gaap/2009/non-gaap/invest-2009-01-31.xsd",
-        "http://xbrl.sec.gov/invest/2011-01-31" => "https://xbrl.sec.gov/invest/2011/invest-2011-01-31.xsd",
-        "http://xbrl.sec.gov/invest/2012-01-31" => "https://xbrl.sec.gov/invest/2012/invest-2012-01-31.xsd",
-        "http://xbrl.sec.gov/invest/2013-01-31" => "https://xbrl.sec.gov/invest/2013/invest-2013-01-31.xsd",
-
-        "http://xbrl.sec.gov/dei/2011-01-31" => "https://xbrl.sec.gov/dei/2011/dei-2011-01-31.xsd",
-        "http://xbrl.sec.gov/dei/2012-01-31" => "https://xbrl.sec.gov/dei/2012/dei-2012-01-31.xsd",
-        "http://xbrl.sec.gov/dei/2013-01-31" => "https://xbrl.sec.gov/dei/2013/dei-2013-01-31.xsd",
-        "http://xbrl.sec.gov/dei/2014-01-31" => "https://xbrl.sec.gov/dei/2014/dei-2014-01-31.xsd",
-        "http://xbrl.sec.gov/dei/2018-01-31" => "https://xbrl.sec.gov/dei/2018/dei-2018-01-31.xsd",
-        "http://xbrl.sec.gov/dei/2019-01-31" => "https://xbrl.sec.gov/dei/2019/dei-2019-01-31.xsd",
-        "http://xbrl.sec.gov/dei/2020-01-31" => "https://xbrl.sec.gov/dei/2020/dei-2020-01-31.xsd",
-
-        "http://fasb.org/us-gaap/2011-01-31" => "http://xbrl.fasb.org/us-gaap/2011/elts/us-gaap-2011-01-31.xsd",
-        "http://fasb.org/us-gaap/2012-01-31" => "http://xbrl.fasb.org/us-gaap/2012/elts/us-gaap-2012-01-31.xsd",
-        "http://fasb.org/us-gaap/2013-01-31" => "http://xbrl.fasb.org/us-gaap/2013/elts/us-gaap-2013-01-31.xsd",
-        "http://fasb.org/us-gaap/2014-01-31" => "http://xbrl.fasb.org/us-gaap/2014/elts/us-gaap-2014-01-31.xsd",
-        "http://fasb.org/us-gaap/2015-01-31" => "http://xbrl.fasb.org/us-gaap/2015/elts/us-gaap-2015-01-31.xsd",
-        "http://fasb.org/us-gaap/2016-01-31" => "http://xbrl.fasb.org/us-gaap/2016/elts/us-gaap-2016-01-31.xsd",
-        "http://fasb.org/us-gaap/2017-01-31" => "http://xbrl.fasb.org/us-gaap/2017/elts/us-gaap-2017-01-31.xsd",
-        "http://fasb.org/us-gaap/2018-01-31" => "http://xbrl.fasb.org/us-gaap/2018/elts/us-gaap-2018-01-31.xsd",
-        "http://fasb.org/us-gaap/2019-01-31" => "http://xbrl.fasb.org/us-gaap/2019/elts/us-gaap-2019-01-31.xsd",
-        "http://fasb.org/us-gaap/2020-01-31" => "http://xbrl.fasb.org/us-gaap/2020/elts/us-gaap-2020-01-31.xsd",
-    ])
-    haskey(ns_schema_map, namespace) && return parse_taxonomy_url(ns_schema_map[namespace], cache)
+    ns_map::Dict{String,String} = NS_SCHEMA_MAP
+    haskey(ns_map, namespace) && return parse_taxonomy_url(ns_map[namespace], cache)
     return nothing
 end
 
@@ -114,9 +129,9 @@ end
 
 
 function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union{String,Nothing}=nothing)::TaxonomySchema
-    
-    # Implement errors
 
+    # Implement errors
+    ns_schema_map::Dict{String,String} = NS_SCHEMA_MAP
     doc::EzXML.Document = readxml(schema_path)
     root::EzXML.Node = doc.root
     target_ns::AbstractString = root["targetNamespace"]
@@ -208,6 +223,32 @@ function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union
                 if split(extended_cal_link.elr_id, "#")[2] == elr.xml_id
                     elr.calculation_link = extended_cal_link
                     break
+                end
+            end
+        end
+    end
+
+    for label_linkbase in taxonomy.lab_linkbases
+        for extended_link in label_linkbase.extended_links
+            for root_locator in extended_link.root_locators
+                (schema_url, concept_id) = split(unescapeuri(root_locator.href), "#")
+                c_taxonomy::Union{TaxonomySchema,Nothing} = get_taxonomy(taxonomy, schema_url)
+
+                if c_taxonomy isa Nothing
+                    if schema_url in values(ns_schema_map)
+                        c_taxonomy = parse_taxonomy_url(schema_url, cache)
+                        push!(taxonomy.imports, c_taxonomy)
+                    else
+                        continue
+                    end
+                end
+
+                concept::Concept = c_taxonomy.concepts[concept_id]
+
+                for label_arc in root_locator.children
+                    for label in label_arc.labels
+                        push!(concept.labels, label)
+                    end
                 end
             end
         end

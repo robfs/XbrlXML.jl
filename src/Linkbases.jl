@@ -1,10 +1,12 @@
 module Linkbases
 
-include("uri_resolver.jl")
+include("uri_helper.jl")
 
 using ..EzXML, ..Cache
 
-export Linkbase, ExtendedLink, parse_linkbase, parse_linkbase_url, DEFINITION, CALCULATION, PRESENTATION, LABEL
+export Linkbase, ExtendedLink, parse_linkbase, parse_linkbase_url
+export DEFINITION, CALCULATION, PRESENTATION, LABEL
+export Label
 
 @enum LinkbaseType DEFINITION=1 CALCULATION PRESENTATION LABEL
 
@@ -83,14 +85,14 @@ struct RelationArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
     arcrole::AbstractString
-    order::Int
+    order::Integer
 end
 
 struct DefinitionArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
     arcrole::AbstractString
-    order::Int
+    order::Integer
     closed::Union{Bool, Nothing}
     context_element::Union{AbstractString, Nothing}
 
@@ -98,7 +100,7 @@ struct DefinitionArc <: AbstractArcElement
         from_locator::Locator,
         to_locator::Locator,
         arcrole::AbstractString,
-        order::Int,
+        order::Integer,
         closed::Union{Bool, Nothing}=nothing,
         context_element::Union{AbstractString, Nothing}=nothing) = new(
             from_locator, to_locator, arcrole, order, closed, context_element
@@ -120,13 +122,13 @@ struct CalculationArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
     arcrole::AbstractString
-    order::Int
+    order::Integer
     weight::Real
-    
+
     CalculationArc(
         from_locator::Locator,
         to_locator::Locator,
-        order::Int,
+        order::Integer,
         weight::Real) = new(
             from_locator, to_locator, "http://www.xbrl.org/2003/arcrole/summation-item", order, weight
         )
@@ -146,15 +148,15 @@ struct PresentationArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
     arcrole::AbstractString
-    order::Int
-    priority::Int
+    order::Integer
+    priority::Integer
     preferred_label::Union{AbstractString, Nothing}
 
     PresentationArc(
         from_locator::Locator,
         to_locator::Locator,
-        order::Int,
-        priority::Int,
+        order::Integer,
+        priority::Integer,
         preferred_label::Union{AbstractString, Nothing}=nothing) = new(
             from_locator,
             to_locator,
@@ -197,12 +199,12 @@ end
 struct LabelArc <: AbstractArcElement
     from_locator::Locator
     arcrole::AbstractString
-    order::Int
+    order::Integer
     labels::Vector{Label}
 
     LabelArc(
         from_locator::Locator,
-        order::Int,
+        order::Integer,
         labels::Vector{Label}
     ) = new(from_locator, "http://www.xbrl.org/2003/arcrole/concept-label", order, labels)
 end
@@ -256,9 +258,9 @@ end
 
 function parse_linkbase_url(linkbase_url::AbstractString, linkbase_type::LinkbaseType, cache::HttpCache)::Linkbase
 
-    if startswith(linkbase_url, "http") 
+    if startswith(linkbase_url, "http")
         linkbase_path = cache_file(cache, linkbase_url)
-        return parse_linkbase(linkbase_path, linkbase_type)
+        return parse_linkbase(linkbase_path, linkbase_type, linkbase_url)
     else
         throw("This function only parses remotely saved linkbases.")
     end
@@ -280,7 +282,7 @@ function get_arc_type(linkbase_type::LinkbaseType)::String
     return "LabelArc"
 end
 
-function create_arc_object(linkbase_type::LinkbaseType, locator_map::Dict{AbstractString, Locator}, arc_from::AbstractString, arc_to::AbstractString, arc_role::AbstractString, arc_order::Union{Int, Nothing}, arc_closed::Union{Bool, Nothing}, arc_context_element::Union{AbstractString, Nothing}, arc_weight::Union{Real, Nothing}, arc_prority::Union{Int, Nothing}, arc_preferred_label::Union{AbstractString, Nothing}, label_map::Dict{String, Vector{Label}})::AbstractArcElement
+function create_arc_object(linkbase_type::LinkbaseType, locator_map::Dict{AbstractString, Locator}, arc_from::AbstractString, arc_to::AbstractString, arc_role::AbstractString, arc_order::Union{Integer, Nothing}, arc_closed::Union{Bool, Nothing}, arc_context_element::Union{AbstractString, Nothing}, arc_weight::Union{Real, Nothing}, arc_prority::Union{Int, Nothing}, arc_preferred_label::Union{AbstractString, Nothing}, label_map::Dict{String, Vector{Label}})::AbstractArcElement
     linkbase_type == DEFINITION && return DefinitionArc(locator_map[arc_from], locator_map[arc_to], arc_role, arc_order, arc_closed, arc_context_element)
     linkbase_type == CALCULATION && return CalculationArc(locator_map[arc_from], locator_map[arc_to], arc_order, arc_weight)
     linkbase_type == PRESENTATION && return PresentationArc(locator_map[arc_from], locator_map[arc_to], arc_order, arc_prority, arc_preferred_label)
@@ -288,7 +290,7 @@ function create_arc_object(linkbase_type::LinkbaseType, locator_map::Dict{Abstra
 end
 
 
-function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseType):: Linkbase
+function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseType, linkbase_url::Union{AbstractString,Union}=nothing):: Linkbase
 
     startswith(linkbase_path, "http") && throw("This function only parses locally saved linkbases.")
 
@@ -315,8 +317,8 @@ function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseTy
         for loc in locators
             loc_label::AbstractString = loc["xlink:label"]
             locator_href::AbstractString = loc["xlink:href"]
-            if !startswith(locator_href, "http") 
-                locator_href = resolve_uri(linkbase_path, locator_href)
+            if !startswith(locator_href, "http")
+                locator_href = resolve_uri(linkbase_url isa Nothing ? linkbase_path : linkbase_url, locator_href)
             end
             locator_map[loc_label] = Locator(locator_href, loc_label)
         end
@@ -333,17 +335,17 @@ function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseTy
         end
 
         for arc_element in arc_elements
-            if haskey(arc_element, "use") 
+            if haskey(arc_element, "use")
                 arc_element["use"] == "prohibited" && continue
             end
             arc_from::AbstractString = arc_element["xlink:from"]
             arc_to::AbstractString = arc_element["xlink:to"]
             arc_role::AbstractString = arc_element["xlink:arcrole"]
-            arc_order::Union{Int, Nothing} = haskey(arc_element, "order") ? trunc(Int, parse(Float64, arc_element["order"])) : nothing
+            arc_order::Union{Integer, Nothing} = haskey(arc_element, "order") ? trunc(Int, parse(Float64, arc_element["order"])) : nothing
             arc_closed::Union{Bool, Nothing} = haskey(arc_element, "xbrldt:weight") ? parse(Bool, arc_element["xbrldt:closed"]) : nothing
             arc_context_element::Union{AbstractString, Nothing} = haskey(arc_element, "xbrldt:contextElement") ? arc_element["xbrldt:contextElement"] : nothing
             arc_weight::Union{Real, Nothing} = haskey(arc_element, "weight") ? parse(Float64,arc_element["weight"]) : nothing
-            arc_priority::Union{Int, Nothing} = haskey(arc_element, "priority") ? trunc(Int, parse(Float64, arc_element["priority"])) : nothing
+            arc_priority::Union{Integer, Nothing} = haskey(arc_element, "priority") ? trunc(Int, parse(Float64, arc_element["priority"])) : nothing
             arc_preferred_label::Union{AbstractString, Nothing} = haskey(arc_element, "preferredLabel") ? arc_element["preferredLabel"] : nothing
 
             arc_object::AbstractArcElement = create_arc_object(linkbase_type, locator_map, arc_from, arc_to, arc_role, arc_order, arc_closed, arc_context_element, arc_weight, arc_priority, arc_preferred_label, label_map)
