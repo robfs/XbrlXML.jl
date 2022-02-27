@@ -232,8 +232,10 @@ function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union
                 c_taxonomy isa Nothing && continue
                 concept::Concept = c_taxonomy.concepts[concept_id]
 
-                for child in root_locator.children
-                    concept.labels = child.labels
+                for label_arc in root_locator.children
+                    for label in label_arc.labels
+                        push!(concept.labels, label)
+                    end
                 end
             end
         end
