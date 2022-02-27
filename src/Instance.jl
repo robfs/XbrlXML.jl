@@ -115,7 +115,7 @@ function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
 
     schema_ref::EzXML.Node = findfirst("link:schemaRef", root, NAME_SPACES)
     schema_uri::AbstractString = schema_ref["xlink:href"]
-    
+
     if startswith(schema_uri, "http")
         taxonomy::TaxonomySchema = parse_taxonomy_url(schema_uri, cache)
     elseif !(instance_url isa Nothing)
@@ -131,7 +131,7 @@ function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
 
     facts::Vector{AbstractFact} = []
     for fact_elem in eachelement(root)
-        
+
         if occursin("context", fact_elem.name) || occursin("unit", fact_elem.name) || occursin("schemaRef", fact_elem.name)
             continue
         end
@@ -146,7 +146,7 @@ function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
         taxonomy_ns = replace(taxonomy_ns, "{" => "")
         tax = get_taxonomy(taxonomy, taxonomy_ns)
         if tax isa Nothing
-            tax = parse_common_taxonomy(cache, taxonomy_ns)
+            tax = _load_common_taxonomy(cache, taxonomy_ns, taxonomy)
         end
 
         concept::Concept = tax.concepts[tax.name_id_map[concept_name]]
@@ -212,7 +212,9 @@ function parse_ixbrl(instance_path::AbstractString, cache::HttpCache, instance_u
         end
         (taxonomy_prefix, concept_name) = split(fact_elem["name"], ":")
         tax = get_taxonomy(taxonomy, ns_map[taxonomy_prefix])
-        tax isa Nothing && throw(error("No Taxonomy"))
+        if tax isa Nothing
+            tax = _load_common_taxonomy(cache, ns_map[taxonomy_prefix], taxonomy)
+        end
         concept::Concept = tax.concepts[tax.name_id_map[concept_name]]
         context::AbstractContext = context_dir[fact_elem["contextRef"]]
         fact_value::Union{AbstractString,Real} = _extract_ixbrl_value(fact_elem)
