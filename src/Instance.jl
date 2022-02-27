@@ -215,6 +215,7 @@ function parse_ixbrl(instance_path::AbstractString, cache::HttpCache, instance_u
     append!(fact_elements, findall(".//ix:nonNumeric", root, ns_map))
 
     for fact_elem in fact_elements
+        _update_ns_map!(ns_map, namespaces(fact_elem))
         if fact_elem.content == "" || length(strip(fact_elem.content)) == 0
             continue
         end
@@ -310,6 +311,7 @@ function _parse_context_elements(
         segment::Union{EzXML.Node,Nothing} = findfirst("xbrli:entity/xbrli:segment", context_elem, NAME_SPACES)
         if !(segment isa Nothing)
             for explicit_member_elem in findall("xbrldi:explicitMember", segment, NAME_SPACES)
+                _update_ns_map!(ns_map, namespaces(explicit_member_elem))
                 (dimension_prefix, dimension_concept_name) = split(strip(explicit_member_elem["dimension"]), ":")
                 (member_prefix, member_concept_name) = split(strip(explicit_member_elem.content), ":")
                 dimension_tax = get_taxonomy(taxonomy, ns_map[dimension_prefix])
@@ -333,6 +335,14 @@ function _parse_context_elements(
 
     return context_dict
 
+end
+
+function _update_ns_map!(ns_map::Dict{AbstractString,AbstractString}, new_ns_map::Vector{Pair{T,T}}) where {T <: AbstractString}
+    for (prefix, ns) in new_ns_map
+        if !haskey(ns_map, prefix) && prefix != ""
+            ns_map[prefix] = ns
+        end
+    end
 end
 
 function _parse_unit_elements(unit_elements::Vector{EzXML.Node})::Dict{AbstractString,AbstractUnit}
