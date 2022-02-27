@@ -4,7 +4,9 @@ include("uri_resolver.jl")
 
 using ..EzXML, ..Cache
 
-export Linkbase, ExtendedLink, parse_linkbase, parse_linkbase_url, DEFINITION, CALCULATION, PRESENTATION, LABEL
+export Linkbase, ExtendedLink, parse_linkbase, parse_linkbase_url
+export DEFINITION, CALCULATION, PRESENTATION, LABEL
+export Label
 
 @enum LinkbaseType DEFINITION=1 CALCULATION PRESENTATION LABEL
 
@@ -122,7 +124,7 @@ struct CalculationArc <: AbstractArcElement
     arcrole::AbstractString
     order::Int
     weight::Real
-    
+
     CalculationArc(
         from_locator::Locator,
         to_locator::Locator,
@@ -256,7 +258,7 @@ end
 
 function parse_linkbase_url(linkbase_url::AbstractString, linkbase_type::LinkbaseType, cache::HttpCache)::Linkbase
 
-    if startswith(linkbase_url, "http") 
+    if startswith(linkbase_url, "http")
         linkbase_path = cache_file(cache, linkbase_url)
         return parse_linkbase(linkbase_path, linkbase_type)
     else
@@ -315,7 +317,7 @@ function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseTy
         for loc in locators
             loc_label::AbstractString = loc["xlink:label"]
             locator_href::AbstractString = loc["xlink:href"]
-            if !startswith(locator_href, "http") 
+            if !startswith(locator_href, "http")
                 locator_href = resolve_uri(linkbase_path, locator_href)
             end
             locator_map[loc_label] = Locator(locator_href, loc_label)
@@ -333,7 +335,7 @@ function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseTy
         end
 
         for arc_element in arc_elements
-            if haskey(arc_element, "use") 
+            if haskey(arc_element, "use")
                 arc_element["use"] == "prohibited" && continue
             end
             arc_from::AbstractString = arc_element["xlink:from"]

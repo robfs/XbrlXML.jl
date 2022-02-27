@@ -59,9 +59,10 @@ mutable struct Concept
     nillable::Union{Bool, Nothing}
     period_type::Union{AbstractString, Nothing}
     balance::Union{AbstractString, Nothing}
+    labels::Vector{Label}
 
     Concept(role_id::AbstractString, uri::Union{AbstractString,Nothing}, definition::AbstractString) = new(
-        role_id, uri, definition, nothing, nothing, nothing, nothing
+        role_id, uri, definition, nothing, nothing, nothing, nothing, nothing, nothing, nothing, []
     )
 end
 
@@ -95,10 +96,12 @@ mutable struct TaxonomySchema
     )
 end
 
-function get_taxonomy(schema::TaxonomySchema, namespace::AbstractString)::Union{TaxonomySchema, Nothing}
-    schema.namespace == namespace && return schema
+function get_taxonomy(schema::TaxonomySchema, url::AbstractString)::Union{TaxonomySchema, Nothing}
+    if schema.namespace == url || schema.schema_url == url
+        return schema
+    end
     for imported_tax in schema.imports
-        result::Union{TaxonomySchema, Nothing} = get_taxonomy(imported_tax, namespace)
+        result::Union{TaxonomySchema, Nothing} = get_taxonomy(imported_tax, url)
         !(result isa Nothing) && return result
     end
     return nothing
@@ -212,6 +215,21 @@ function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union
                 if split(extended_cal_link.elr_id, "#")[2] == elr.xml_id
                     elr.calculation_link = extended_cal_link
                     break
+                end
+            end
+        end
+    end
+
+    for label_linkbase in taxonomy.lab_linkbases
+        for extended_link in label_linkbase.extended_links
+            for root_locator in extended_link.root_locators
+                (schema_url, concept_id) = split(root_locator.href, "#")
+                c_taxonomy::Union{TaxonomySchema,Nothing} = get_taxonomy(taxonomy, schema_url)
+                c_taxonomy isa Nothing && continue
+                concept::Concept = c_taxonomy.concepts[concept_id]
+
+                for child in root_locator.children
+                    concept.labels = child.labels
                 end
             end
         end
