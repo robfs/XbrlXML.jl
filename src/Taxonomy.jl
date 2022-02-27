@@ -78,6 +78,9 @@ function parse_common_taxonomy(cache::HttpCache, namespace::AbstractString)::Uni
         "http://fasb.org/srt/2019-01-31" => "http://xbrl.fasb.org/srt/2019/elts/srt-2019-01-31.xsd",
         "http://fasb.org/srt/2020-01-31" => "http://xbrl.fasb.org/srt/2020/elts/srt-2020-01-31.xsd",
 
+        "http://xbrl.sec.gov/country/2017-01-31" => "https://xbrl.sec.gov/country/2017/country-2017-01-31.xsd",
+        "http://xbrl.sec.gov/country/2020-01-31" => "https://xbrl.sec.gov/country/2020/country-2020-01-31.xsd",
+
         "http://xbrl.us/invest/2009-01-31" => "https://taxonomies.xbrl.us/us-gaap/2009/non-gaap/invest-2009-01-31.xsd",
         "http://xbrl.sec.gov/invest/2011-01-31" => "https://xbrl.sec.gov/invest/2011/invest-2011-01-31.xsd",
         "http://xbrl.sec.gov/invest/2012-01-31" => "https://xbrl.sec.gov/invest/2012/invest-2012-01-31.xsd",
@@ -114,7 +117,7 @@ end
 
 
 function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union{String,Nothing}=nothing)::TaxonomySchema
-    
+
     # Implement errors
 
     doc::EzXML.Document = readxml(schema_path)
