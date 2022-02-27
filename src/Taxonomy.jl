@@ -6,6 +6,8 @@ include("uri_helper.jl")
 
 using ..EzXML, ..Cache, ..Linkbases
 
+import HTTP: unescapeuri
+
 export Concept, TaxonomySchema, parse_taxonomy, parse_common_taxonomy, parse_taxonomy_url, get_taxonomy
 
 NAME_SPACES = Dict([
@@ -227,7 +229,7 @@ function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union
     for label_linkbase in taxonomy.lab_linkbases
         for extended_link in label_linkbase.extended_links
             for root_locator in extended_link.root_locators
-                (schema_url, concept_id) = split(root_locator.href, "#")
+                (schema_url, concept_id) = split(unescapeuri(root_locator.href), "#")
                 c_taxonomy::Union{TaxonomySchema,Nothing} = get_taxonomy(taxonomy, schema_url)
 
                 if c_taxonomy isa Nothing
