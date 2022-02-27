@@ -76,7 +76,7 @@ function cache_edgar_enclosure(cache::HttpCache, enclosure_url::AbstractString)
         close(r)
 
     else
-        throw("This is not a valid zip folder")
+        throw(error("This is not a valid zip folder"))
     end
 end
 
