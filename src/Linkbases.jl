@@ -1,6 +1,6 @@
 module Linkbases
 
-include("uri_resolver.jl")
+include("uri_helper.jl")
 
 using ..EzXML, ..Cache
 

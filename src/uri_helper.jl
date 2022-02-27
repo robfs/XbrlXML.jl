@@ -34,3 +34,18 @@ function resolve_uri(dir_uri::AbstractString, relative_uri::AbstractString)::Abs
 
     return replace(absolute_uri, r"/\w+/\.\./" => "/")
 end
+
+
+function compare_uri(uri1::AbstractString, uri2::AbstractString)::Bool
+    if occursin("://", uri1)
+        uri1 = split(uri1, "://")[2]
+    end
+    if occursin("://", uri2)
+        uri2 = split(uri2, "://")[2]
+    end
+
+    uri1_segments::Vector{UnitRange{Integer}} = findall(r"[\w']+", uri1)
+    uri2_segments::Vector{UnitRange{Integer}} = findall(r"[\w']+", uri2)
+
+    return uri1_segments == uri2_segments
+end

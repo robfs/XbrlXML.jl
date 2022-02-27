@@ -2,7 +2,7 @@ module Taxonomy
 
 using Memoize, LRUCache
 
-include("uri_resolver.jl")
+include("uri_helper.jl")
 
 using ..EzXML, ..Cache, ..Linkbases
 
@@ -101,7 +101,7 @@ mutable struct TaxonomySchema
 end
 
 function get_taxonomy(schema::TaxonomySchema, url::AbstractString)::Union{TaxonomySchema, Nothing}
-    if schema.namespace == url || schema.schema_url == url
+    if compare_uri(schema.namespace, url) || compare_uri(schema.schema_url, url)
         return schema
     end
     for imported_tax in schema.imports
