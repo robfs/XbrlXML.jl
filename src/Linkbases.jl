@@ -8,6 +8,15 @@ export Linkbase, ExtendedLink, parse_linkbase, parse_linkbase_url, DEFINITION, C
 
 @enum LinkbaseType DEFINITION=1 CALCULATION PRESENTATION LABEL
 
+NAME_SPACES = [
+    "xsd" => "http://www.w3.org/2001/XMLSchema",
+    "link" => "http://www.xbrl.org/2003/linkbase",
+    "xlink" => "http://www.w3.org/1999/xlink",
+    "xbrldt" => "http://xbrl.org/2005/xbrldt",
+    "xbrli" => "http://www.xbrl.org/2003/instance",
+    "xbrldi" => "http://xbrl.org/2006/xbrldi"
+]
+
 function get_type_from_role(role::AbstractString)::Union{LinkbaseType, Nothing}
     d::Dict{AbstractString, LinkbaseType} = Dict([
         "http://www.xbrl.org/2003/role/definitionLinkbaseRef" => DEFINITION,
@@ -288,7 +297,7 @@ function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseTy
     doc::EzXML.Document = readxml(linkbase_path)
 
     role_refs::Dict{AbstractString, AbstractString} = Dict()
-    for role_ref in findall("link:roleRef", doc.root)
+    for role_ref in findall("link:roleRef", doc.root, NAME_SPACES)
         role_refs[role_ref["roleURI"]] = role_ref["xlink:href"]
     end
 
@@ -297,10 +306,10 @@ function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseTy
     extended_link_tag::String = get_extended_link_tag(linkbase_type)
     arc_type::String = get_arc_type(linkbase_type)
 
-    for extended_link in findall("link:$(extended_link_tag)", doc.root)
+    for extended_link in findall("link:$(extended_link_tag)", doc.root, NAME_SPACES)
         extended_link_role::AbstractString = extended_link["xlink:role"]
-        locators::Vector{EzXML.Node} = findall("link:loc", extended_link)
-        arc_elements::Vector{EzXML.Node} = findall("link:$(arc_type)", extended_link)
+        locators::Vector{EzXML.Node} = findall("link:loc", extended_link, NAME_SPACES)
+        arc_elements::Vector{EzXML.Node} = findall("link:$(arc_type)", extended_link, NAME_SPACES)
 
         locator_map::Dict{AbstractString, Locator} = Dict()
         for loc in locators
@@ -314,7 +323,7 @@ function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseTy
 
         label_map::Dict{String, Vector{Label}} = Dict()
         if linkbase_type == LABEL
-            for label_element in findall("link:label", extended_link)
+            for label_element in findall("link:label", extended_link, NAME_SPACES)
                 label_name::AbstractString = label_element["xlink:label"]
                 label_role::AbstractString = label_element["xlink:role"]
                 label_lang::AbstractString = label_element["xml:lang"]

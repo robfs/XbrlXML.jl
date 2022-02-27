@@ -6,14 +6,14 @@ using ..EzXML, ..Cache, ..Taxonomy, Dates
 
 export parse_instance
 
-NAME_SPACES = Dict([
+NAME_SPACES = [
     "xsd" => "http://www.w3.org/2001/XMLSchema",
     "link" => "http://www.xbrl.org/2003/linkbase",
     "xlink" => "http://www.w3.org/1999/xlink",
     "xbrldt" => "http://xbrl.org/2005/xbrldt",
     "xbrli" => "http://www.xbrl.org/2003/instance",
     "xbrldi" => "http://xbrl.org/2006/xbrldi"
-])
+]
 
 struct ExplicitMember
     dimension::Concept
@@ -113,7 +113,7 @@ function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
     delete!(ns_map, "")
     ns_map["default"] = namespace(root)
 
-    schema_ref::EzXML.Node = findfirst("link:schemaRef", root, ns_map)
+    schema_ref::EzXML.Node = findfirst("link:schemaRef", root, NAME_SPACES)
     schema_uri::AbstractString = schema_ref["xlink:href"]
     
     if startswith(schema_uri, "http")
@@ -131,7 +131,7 @@ function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
 
     facts::Vector{AbstractFact} = []
     for fact_elem in eachelement(root)
-        @show fact_elem.name
+        
         if occursin("context", fact_elem.name) || occursin("unit", fact_elem.name) || occursin("schemaRef", fact_elem.name)
             continue
         end
@@ -183,7 +183,7 @@ function parse_ixbrl(instance_path::AbstractString, cache::HttpCache, instance_u
     delete!(ns_map, "")
     ns_map["default"] = namespace(root)
 
-    schema_ref::EzXML.Node = findfirst(".//link:schemaRef", root, ns_map)
+    schema_ref::EzXML.Node = findfirst(".//link:schemaRef", root, NAME_SPACES)
     schema_uri::AbstractString = schema_ref["xlink:href"]
 
     if startswith(schema_uri, "http")
