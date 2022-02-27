@@ -277,7 +277,6 @@ function _extract_ixbrl_value(fact_elem::EzXML.Node)::Union{Real,AbstractString}
 end
 
 
-function _parse_context_elements(context_elements::Vector{EzXML.Node}, ns_map::Dict{AbstractString,AbstractString}, taxonomy::TaxonomySchema)::Dict{AbstractString,AbstractContext}
 function _parse_context_elements(
     context_elements::Vector{EzXML.Node},
     ns_map::Dict{AbstractString,AbstractString},
