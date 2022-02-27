@@ -126,7 +126,7 @@ function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
         taxonomy = parse_taxonomy(schema_path, cache)
     end
 
-    context_dir = _parse_context_elements(findall("xbrli:context", root, NAME_SPACES), ns_map, taxonomy)
+    context_dir = _parse_context_elements(findall("xbrli:context", root, NAME_SPACES), ns_map, taxonomy, cache)
     unit_dir = _parse_unit_elements(findall("xbrli:unit", root, NAME_SPACES))
 
     facts::Vector{AbstractFact} = []
@@ -199,7 +199,7 @@ function parse_ixbrl(instance_path::AbstractString, cache::HttpCache, instance_u
     xbrl_resources::EzXML.Node = findfirst(".//ix:resources", root, ns_map)
     xbrl_resources isa Nothing && throw(error("No resources"))
 
-    context_dir = _parse_context_elements(findall("xbrli:context", xbrl_resources, NAME_SPACES), ns_map, taxonomy)
+    context_dir = _parse_context_elements(findall("xbrli:context", xbrl_resources, NAME_SPACES), ns_map, taxonomy, cache)
     unit_dir = _parse_unit_elements(findall("xbrli:unit", xbrl_resources, NAME_SPACES))
 
     facts::Vector{AbstractFact} = []
@@ -268,6 +268,12 @@ end
 
 
 function _parse_context_elements(context_elements::Vector{EzXML.Node}, ns_map::Dict{AbstractString,AbstractString}, taxonomy::TaxonomySchema)::Dict{AbstractString,AbstractContext}
+function _parse_context_elements(
+    context_elements::Vector{EzXML.Node},
+    ns_map::Dict{AbstractString,AbstractString},
+    taxonomy::TaxonomySchema,
+    cache::HttpCache,
+)::Dict{AbstractString,AbstractContext}
     context_dict::Dict{AbstractString,AbstractContext} = Dict()
     for context_elem in context_elements
         context_id::AbstractString = context_elem["id"]
@@ -291,9 +297,13 @@ function _parse_context_elements(context_elements::Vector{EzXML.Node}, ns_map::D
                 (dimension_prefix, dimension_concept_name) = split(strip(explicit_member_elem["dimension"]), ":")
                 (member_prefix, member_concept_name) = split(strip(explicit_member_elem.content), ":")
                 dimension_tax = get_taxonomy(taxonomy, ns_map[dimension_prefix])
-                dimension_tax isa Nothing && throw(error("Taxonomy not found"))
+                if dimension_tax isa Nothing
+                    dimension_tax = _load_common_taxonomy(cache, ns_map[dimension_prefix], taxonomy)
+                end
                 member_tax = member_prefix == dimension_prefix ? dimension_tax : get_taxonomy(taxonomy, ns_map[member_prefix])
-                member_tax isa Nothing && throw(error("Taxonomy not found"))
+                if member_tax isa Nothing
+                    member_tax = _load_common_taxonomy(cache, ns_map[member_prefix], taxonomy)
+                end
                 dimension_concept::Concept = dimension_tax.concepts[dimension_tax.name_id_map[dimension_concept_name]]
                 member_concept::Concept = member_tax.concepts[member_tax.name_id_map[member_concept_name]]
 
@@ -331,6 +341,12 @@ function _parse_unit_elements(unit_elements::Vector{EzXML.Node})::Dict{AbstractS
     return unit_dict
 end
 
+function _load_common_taxonomy(cache::HttpCache, namespace::AbstractString, taxonomy::TaxonomySchema)::TaxonomySchema
+    tax = parse_common_taxonomy(cache, namespace)
+    tax isa Nothing && throw(error("Taxonomy not found"))
+    push!(taxonomy.imports, tax)
+    return tax
+end
 
 function parse_instance(cache::HttpCache, url::AbstractString)::XbrlInstance
     split(url, ".")[end] == "xml" && return parse_xbrl_url(url, cache)
