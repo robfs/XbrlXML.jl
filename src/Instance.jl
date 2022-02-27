@@ -143,15 +143,15 @@ function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
         if occursin("context", fact_elem.name) || occursin("unit", fact_elem.name) || occursin("schemaRef", fact_elem.name)
             continue
         end
-        if !(occursin("contextRef", fact_elem.name))
+        if !haskey(fact_elem, "contextRef")
             continue
         end
         if fact_elem.content == "" || length(strip(fact_elem.content)) == 0
             continue
         end
 
-        (taxonomy_ns, concept_name) = split(fact_elem.name, "}")
-        taxonomy_ns = replace(taxonomy_ns, "{" => "")
+        taxonomy_ns::AbstractString = namespace(fact_elem)
+        concept_name::AbstractString = fact_elem.name
         tax = get_taxonomy(taxonomy, taxonomy_ns)
         if tax isa Nothing
             tax = _load_common_taxonomy(cache, taxonomy_ns, taxonomy)
@@ -163,8 +163,8 @@ function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
         if haskey(fact_elem, "unitRef")
             unit::AbstractUnit = unit_dir[fact_elem["unitRef"]]
             decimals_text::AbstractString = strip(fact_elem["decimals"])
-            decimals::Int = lowercase(decimals_text) == "inf" ? nothing : trunc(Int, parse(Float64, decimals_text))
-            fact::AbstractFact = NumericFact(concept, context, strip(fact_elem.content), nothing, unit, decimals)
+            decimals::Union{Int,Nothing} = lowercase(decimals_text) == "inf" ? nothing : trunc(Int, parse(Float64, decimals_text))
+            fact::AbstractFact = NumericFact(concept, context, parse(Float64, strip(fact_elem.content)), nothing, unit, decimals)
         else
             fact = TextFact(concept, context, strip(fact_elem.content), nothing)
         end
