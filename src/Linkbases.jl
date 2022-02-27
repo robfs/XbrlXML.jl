@@ -260,7 +260,7 @@ function parse_linkbase_url(linkbase_url::AbstractString, linkbase_type::Linkbas
 
     if startswith(linkbase_url, "http")
         linkbase_path = cache_file(cache, linkbase_url)
-        return parse_linkbase(linkbase_path, linkbase_type)
+        return parse_linkbase(linkbase_path, linkbase_type, linkbase_url)
     else
         throw("This function only parses remotely saved linkbases.")
     end
@@ -290,7 +290,7 @@ function create_arc_object(linkbase_type::LinkbaseType, locator_map::Dict{Abstra
 end
 
 
-function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseType):: Linkbase
+function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseType, linkbase_url::Union{AbstractString,Union}=nothing):: Linkbase
 
     startswith(linkbase_path, "http") && throw("This function only parses locally saved linkbases.")
 
@@ -318,7 +318,7 @@ function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseTy
             loc_label::AbstractString = loc["xlink:label"]
             locator_href::AbstractString = loc["xlink:href"]
             if !startswith(locator_href, "http")
-                locator_href = resolve_uri(linkbase_path, locator_href)
+                locator_href = resolve_uri(linkbase_url isa Nothing ? linkbase_path : linkbase_url, locator_href)
             end
             locator_map[loc_label] = Locator(locator_href, loc_label)
         end
