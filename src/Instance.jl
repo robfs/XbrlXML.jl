@@ -358,13 +358,21 @@ function _load_common_taxonomy(cache::HttpCache, namespace::AbstractString, taxo
 end
 
 function parse_instance(cache::HttpCache, url::AbstractString)::XbrlInstance
-    split(url, ".")[end] == "xml" && return parse_xbrl_url(url, cache)
-    return parse_ixbrl_url(url, cache)
+    filetype::SubString = split(url, ".")[end]
+    if filetype == "xml" || filetype == "xbrl"
+        return parse_xbrl_url(url, cache)
+    else
+        return parse_ixbrl_url(url, cache)
+    end
 end
 
 function parse_instance_locally(cache::HttpCache, path::AbstractString, instance_url::Union{AbstractString,Nothing}=nothing)::XbrlInstance
-    split(path, ".")[end] == "xml" && return parse_xbrl(path, cache, instance_url)
-    return parse_ixbrl(path, cache, instance_url)
+    filetype::SubString = split(path, ".")[end]
+    if filetype == "xml" || filetype == "xbrl"
+        return parse_xbrl(path, cache, instance_url)
+    else
+        return parse_ixbrl(path, cache, instance_url)
+    end
 end
 
 
