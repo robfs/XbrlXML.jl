@@ -268,6 +268,9 @@ function _extract_ixbrl_value(fact_elem::EzXML.Node)::Union{Real,AbstractString}
 
     if raw_value isa Float64
         raw_value *= (10 ^ value_scale)
+        if abs(raw_value) > 1e6
+            raw_value = round(raw_value)
+        end
         if value_sign == "-"
             raw_value *= -1
         end
