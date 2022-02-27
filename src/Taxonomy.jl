@@ -15,6 +15,38 @@ NAME_SPACES = Dict([
     "xbrldt" => "http://xbrl.org/2005/xbrldt"
 ])
 
+NS_SCHEMA_MAP = Dict([
+        "http://fasb.org/srt/2018-01-31" => "http://xbrl.fasb.org/srt/2018/elts/srt-2018-01-31.xsd",
+        "http://fasb.org/srt/2019-01-31" => "http://xbrl.fasb.org/srt/2019/elts/srt-2019-01-31.xsd",
+        "http://fasb.org/srt/2020-01-31" => "http://xbrl.fasb.org/srt/2020/elts/srt-2020-01-31.xsd",
+
+        "http://xbrl.sec.gov/country/2017-01-31" => "https://xbrl.sec.gov/country/2017/country-2017-01-31.xsd",
+        "http://xbrl.sec.gov/country/2020-01-31" => "https://xbrl.sec.gov/country/2020/country-2020-01-31.xsd",
+
+        "http://xbrl.us/invest/2009-01-31" => "https://taxonomies.xbrl.us/us-gaap/2009/non-gaap/invest-2009-01-31.xsd",
+        "http://xbrl.sec.gov/invest/2011-01-31" => "https://xbrl.sec.gov/invest/2011/invest-2011-01-31.xsd",
+        "http://xbrl.sec.gov/invest/2012-01-31" => "https://xbrl.sec.gov/invest/2012/invest-2012-01-31.xsd",
+        "http://xbrl.sec.gov/invest/2013-01-31" => "https://xbrl.sec.gov/invest/2013/invest-2013-01-31.xsd",
+
+        "http://xbrl.sec.gov/dei/2011-01-31" => "https://xbrl.sec.gov/dei/2011/dei-2011-01-31.xsd",
+        "http://xbrl.sec.gov/dei/2012-01-31" => "https://xbrl.sec.gov/dei/2012/dei-2012-01-31.xsd",
+        "http://xbrl.sec.gov/dei/2013-01-31" => "https://xbrl.sec.gov/dei/2013/dei-2013-01-31.xsd",
+        "http://xbrl.sec.gov/dei/2014-01-31" => "https://xbrl.sec.gov/dei/2014/dei-2014-01-31.xsd",
+        "http://xbrl.sec.gov/dei/2018-01-31" => "https://xbrl.sec.gov/dei/2018/dei-2018-01-31.xsd",
+        "http://xbrl.sec.gov/dei/2019-01-31" => "https://xbrl.sec.gov/dei/2019/dei-2019-01-31.xsd",
+        "http://xbrl.sec.gov/dei/2020-01-31" => "https://xbrl.sec.gov/dei/2020/dei-2020-01-31.xsd",
+
+        "http://fasb.org/us-gaap/2011-01-31" => "http://xbrl.fasb.org/us-gaap/2011/elts/us-gaap-2011-01-31.xsd",
+        "http://fasb.org/us-gaap/2012-01-31" => "http://xbrl.fasb.org/us-gaap/2012/elts/us-gaap-2012-01-31.xsd",
+        "http://fasb.org/us-gaap/2013-01-31" => "http://xbrl.fasb.org/us-gaap/2013/elts/us-gaap-2013-01-31.xsd",
+        "http://fasb.org/us-gaap/2014-01-31" => "http://xbrl.fasb.org/us-gaap/2014/elts/us-gaap-2014-01-31.xsd",
+        "http://fasb.org/us-gaap/2015-01-31" => "http://xbrl.fasb.org/us-gaap/2015/elts/us-gaap-2015-01-31.xsd",
+        "http://fasb.org/us-gaap/2016-01-31" => "http://xbrl.fasb.org/us-gaap/2016/elts/us-gaap-2016-01-31.xsd",
+        "http://fasb.org/us-gaap/2017-01-31" => "http://xbrl.fasb.org/us-gaap/2017/elts/us-gaap-2017-01-31.xsd",
+        "http://fasb.org/us-gaap/2018-01-31" => "http://xbrl.fasb.org/us-gaap/2018/elts/us-gaap-2018-01-31.xsd",
+        "http://fasb.org/us-gaap/2019-01-31" => "http://xbrl.fasb.org/us-gaap/2019/elts/us-gaap-2019-01-31.xsd",
+        "http://fasb.org/us-gaap/2020-01-31" => "http://xbrl.fasb.org/us-gaap/2020/elts/us-gaap-2020-01-31.xsd",
+    ])
 
 mutable struct Concept
     xml_id::AbstractString
@@ -73,39 +105,8 @@ function get_taxonomy(schema::TaxonomySchema, namespace::AbstractString)::Union{
 end
 
 function parse_common_taxonomy(cache::HttpCache, namespace::AbstractString)::Union{TaxonomySchema, Nothing}
-    ns_schema_map::Dict = Dict([
-        "http://fasb.org/srt/2018-01-31" => "http://xbrl.fasb.org/srt/2018/elts/srt-2018-01-31.xsd",
-        "http://fasb.org/srt/2019-01-31" => "http://xbrl.fasb.org/srt/2019/elts/srt-2019-01-31.xsd",
-        "http://fasb.org/srt/2020-01-31" => "http://xbrl.fasb.org/srt/2020/elts/srt-2020-01-31.xsd",
-
-        "http://xbrl.sec.gov/country/2017-01-31" => "https://xbrl.sec.gov/country/2017/country-2017-01-31.xsd",
-        "http://xbrl.sec.gov/country/2020-01-31" => "https://xbrl.sec.gov/country/2020/country-2020-01-31.xsd",
-
-        "http://xbrl.us/invest/2009-01-31" => "https://taxonomies.xbrl.us/us-gaap/2009/non-gaap/invest-2009-01-31.xsd",
-        "http://xbrl.sec.gov/invest/2011-01-31" => "https://xbrl.sec.gov/invest/2011/invest-2011-01-31.xsd",
-        "http://xbrl.sec.gov/invest/2012-01-31" => "https://xbrl.sec.gov/invest/2012/invest-2012-01-31.xsd",
-        "http://xbrl.sec.gov/invest/2013-01-31" => "https://xbrl.sec.gov/invest/2013/invest-2013-01-31.xsd",
-
-        "http://xbrl.sec.gov/dei/2011-01-31" => "https://xbrl.sec.gov/dei/2011/dei-2011-01-31.xsd",
-        "http://xbrl.sec.gov/dei/2012-01-31" => "https://xbrl.sec.gov/dei/2012/dei-2012-01-31.xsd",
-        "http://xbrl.sec.gov/dei/2013-01-31" => "https://xbrl.sec.gov/dei/2013/dei-2013-01-31.xsd",
-        "http://xbrl.sec.gov/dei/2014-01-31" => "https://xbrl.sec.gov/dei/2014/dei-2014-01-31.xsd",
-        "http://xbrl.sec.gov/dei/2018-01-31" => "https://xbrl.sec.gov/dei/2018/dei-2018-01-31.xsd",
-        "http://xbrl.sec.gov/dei/2019-01-31" => "https://xbrl.sec.gov/dei/2019/dei-2019-01-31.xsd",
-        "http://xbrl.sec.gov/dei/2020-01-31" => "https://xbrl.sec.gov/dei/2020/dei-2020-01-31.xsd",
-
-        "http://fasb.org/us-gaap/2011-01-31" => "http://xbrl.fasb.org/us-gaap/2011/elts/us-gaap-2011-01-31.xsd",
-        "http://fasb.org/us-gaap/2012-01-31" => "http://xbrl.fasb.org/us-gaap/2012/elts/us-gaap-2012-01-31.xsd",
-        "http://fasb.org/us-gaap/2013-01-31" => "http://xbrl.fasb.org/us-gaap/2013/elts/us-gaap-2013-01-31.xsd",
-        "http://fasb.org/us-gaap/2014-01-31" => "http://xbrl.fasb.org/us-gaap/2014/elts/us-gaap-2014-01-31.xsd",
-        "http://fasb.org/us-gaap/2015-01-31" => "http://xbrl.fasb.org/us-gaap/2015/elts/us-gaap-2015-01-31.xsd",
-        "http://fasb.org/us-gaap/2016-01-31" => "http://xbrl.fasb.org/us-gaap/2016/elts/us-gaap-2016-01-31.xsd",
-        "http://fasb.org/us-gaap/2017-01-31" => "http://xbrl.fasb.org/us-gaap/2017/elts/us-gaap-2017-01-31.xsd",
-        "http://fasb.org/us-gaap/2018-01-31" => "http://xbrl.fasb.org/us-gaap/2018/elts/us-gaap-2018-01-31.xsd",
-        "http://fasb.org/us-gaap/2019-01-31" => "http://xbrl.fasb.org/us-gaap/2019/elts/us-gaap-2019-01-31.xsd",
-        "http://fasb.org/us-gaap/2020-01-31" => "http://xbrl.fasb.org/us-gaap/2020/elts/us-gaap-2020-01-31.xsd",
-    ])
-    haskey(ns_schema_map, namespace) && return parse_taxonomy_url(ns_schema_map[namespace], cache)
+    ns_map::Dict{String,String} = NS_SCHEMA_MAP
+    haskey(ns_map, namespace) && return parse_taxonomy_url(ns_map[namespace], cache)
     return nothing
 end
 
