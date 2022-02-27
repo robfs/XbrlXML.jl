@@ -244,6 +244,7 @@ function parse_ixbrl(instance_path::AbstractString, cache::HttpCache, instance_u
 end
 
 function _extract_ixbrl_value(fact_elem::EzXML.Node)::Union{Real,AbstractString}
+
     value_scale::Int = haskey(fact_elem, "scale") ? trunc(Int, parse(Float64, fact_elem["scale"])) : 0
     value_sign::Union{AbstractString,Nothing} = haskey(fact_elem, "sign") ? fact_elem["sign"] : nothing
 
@@ -266,6 +267,8 @@ function _extract_ixbrl_value(fact_elem::EzXML.Node)::Union{Real,AbstractString}
             else
                 raw_value = Dates.format(Date(fact_elem.content, dateformat"U d"), "--m-dd")
             end
+        elseif value_format == "numwordsen" && lowercase(strip(fact_elem.content)) in ("no", "none")
+            raw_value = 0.0
         else
             raw_value = strip(fact_elem.content)
         end
