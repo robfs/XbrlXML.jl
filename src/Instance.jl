@@ -262,11 +262,10 @@ function _extract_ixbrl_value(fact_elem::EzXML.Node)::Union{Real,AbstractString}
         elseif value_format == "numdotdecimal"
             raw_value = parse(Float64, replace(replace(strip(fact_elem.content), " " => ""), "," => ""))
         elseif value_format == "datemonthdayen"
-            if length(split(fact_elem, " ")[1]) == 3
-                raw_value = Dates.format(Date(fact_elem.content, dateformat"u d"), "--m-dd")
-            else
-                raw_value = Dates.format(Date(fact_elem.content, dateformat"U d"), "--m-dd")
-            end
+            delimiter::String = occursin("-", fact_elem.content) ? "-" : " "
+            monthformat::String = length(split(fact_elem.content, delimiter)[1]) == 3 ? "u" : "U"
+            datefmt::DateFormat = DateFormat(monthformat * delimiter * "d")
+            raw_value = Dates.format(Date(fact_elem.content, datefmt), "--m-dd")
         elseif value_format == "numwordsen" && lowercase(strip(fact_elem.content)) in ("no", "none")
             raw_value = 0.0
         else
