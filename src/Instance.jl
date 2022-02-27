@@ -76,12 +76,19 @@ struct DivideUnit <: AbstractUnit
     denominator::AbstractString
 end
 
+struct Footnote
+    content::AbstractString
+    lang::AbstractString
+end
+
+
 abstract type AbstractFact end
 
 struct NumericFact <: AbstractFact
     concept::Concept
     context::AbstractContext
     value::Real
+    footnote::Union{Footnote,Nothing}
     unit::AbstractUnit
     decimals::Union{Int,Nothing}
 end
@@ -90,6 +97,7 @@ struct TextFact <: AbstractFact
     concept::Concept
     context::AbstractContext
     value::AbstractString
+    footnote::Union{Footnote,Nothing}
 end
 
 struct XbrlInstance
@@ -156,9 +164,9 @@ function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
             unit::AbstractUnit = unit_dir[fact_elem["unitRef"]]
             decimals_text::AbstractString = strip(fact_elem["decimals"])
             decimals::Int = lowercase(decimals_text) == "inf" ? nothing : trunc(Int, parse(Float64, decimals_text))
-            fact::AbstractFact = NumericFact(concept, context, strip(fact_elem.content), unit, decimals)
+            fact::AbstractFact = NumericFact(concept, context, strip(fact_elem.content), nothing, unit, decimals)
         else
-            fact = TextFact(concept, context, strip(fact_elem.content))
+            fact = TextFact(concept, context, strip(fact_elem.content), nothing)
         end
 
         push!(facts, fact)
@@ -224,9 +232,9 @@ function parse_ixbrl(instance_path::AbstractString, cache::HttpCache, instance_u
             decimals_text::AbstractString = strip(fact_elem["decimals"])
             decimals::Union{Int,Nothing} = lowercase(decimals_text) == "inf" ? nothing : trunc(Int, parse(Float64, decimals_text))
 
-            fact::AbstractFact = NumericFact(concept, context, fact_value, unit, decimals)
+            fact::AbstractFact = NumericFact(concept, context, fact_value, nothing, unit, decimals)
         else
-            fact = TextFact(concept, context, "$(fact_value)")
+            fact = TextFact(concept, context, "$(fact_value)", nothing)
         end
         push!(facts, fact)
     end
