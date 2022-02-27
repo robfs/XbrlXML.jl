@@ -7,13 +7,22 @@ export HttpCache, cache_file
 
 mutable struct HttpCache
     cache_dir::AbstractString
-    headers::Union{Dict{AbstractString, AbstractString}, Nothing}
+    headers::Dict{AbstractString, AbstractString}
 
-    HttpCache(cache_dir::AbstractString) = new(
+    HttpCache(cache_dir::AbstractString, headers::Dict{AbstractString,AbstractString}=Dict()) = new(
         endswith(cache_dir, "/") ? cache_dir : cache_dir * "/",
-        nothing
+        headers
     )
+
+    HttpCache(headers::Dict{AbstractString,AbstractString}) = new("./cache/", headers)
+
+    HttpCache(headers::Vector{Pair{AbstractString,AbstractString}}) = new("./cache/", Dict(headers))
+
+    HttpCache() = new("./cache/", Dict())
+
 end
+
+HttpCache(cache_dir::AbstractString, headers::Vector{Pair{AbstractString,AbstractString}}) = HttpCache(cache_dir, Dict(headers))
 
 function cache_file(cache::HttpCache, file_url::AbstractString)::AbstractString
     
