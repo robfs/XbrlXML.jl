@@ -102,7 +102,7 @@ end
 
 function parse_xbrl_url(instance_url::AbstractString, cache::HttpCache)::XbrlInstance
     instance_path::AbstractString = cache_file(cache, instance_url)
-    return parse_xbrl(instance_path, instance_url)
+    return parse_xbrl(instance_path, cache, instance_url)
 end
 
 function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_url::Union{AbstractString,Nothing} = nothing)::XbrlInstance
@@ -165,7 +165,7 @@ function parse_xbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
 
     end
 
-    return XbrlInstance(instance_url isa Nothing ? instance_path : instance_url, taxonomy, factrs, context_dir, unit_dir)
+    return XbrlInstance(instance_url isa Nothing ? instance_path : instance_url, taxonomy, facts, context_dir, unit_dir)
 
 end
 
