@@ -85,14 +85,14 @@ struct RelationArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
     arcrole::AbstractString
-    order::Int
+    order::Integer
 end
 
 struct DefinitionArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
     arcrole::AbstractString
-    order::Int
+    order::Integer
     closed::Union{Bool, Nothing}
     context_element::Union{AbstractString, Nothing}
 
@@ -100,7 +100,7 @@ struct DefinitionArc <: AbstractArcElement
         from_locator::Locator,
         to_locator::Locator,
         arcrole::AbstractString,
-        order::Int,
+        order::Integer,
         closed::Union{Bool, Nothing}=nothing,
         context_element::Union{AbstractString, Nothing}=nothing) = new(
             from_locator, to_locator, arcrole, order, closed, context_element
@@ -122,13 +122,13 @@ struct CalculationArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
     arcrole::AbstractString
-    order::Int
+    order::Integer
     weight::Real
 
     CalculationArc(
         from_locator::Locator,
         to_locator::Locator,
-        order::Int,
+        order::Integer,
         weight::Real) = new(
             from_locator, to_locator, "http://www.xbrl.org/2003/arcrole/summation-item", order, weight
         )
@@ -148,15 +148,15 @@ struct PresentationArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
     arcrole::AbstractString
-    order::Int
-    priority::Int
+    order::Integer
+    priority::Integer
     preferred_label::Union{AbstractString, Nothing}
 
     PresentationArc(
         from_locator::Locator,
         to_locator::Locator,
-        order::Int,
-        priority::Int,
+        order::Integer,
+        priority::Integer,
         preferred_label::Union{AbstractString, Nothing}=nothing) = new(
             from_locator,
             to_locator,
@@ -199,12 +199,12 @@ end
 struct LabelArc <: AbstractArcElement
     from_locator::Locator
     arcrole::AbstractString
-    order::Int
+    order::Integer
     labels::Vector{Label}
 
     LabelArc(
         from_locator::Locator,
-        order::Int,
+        order::Integer,
         labels::Vector{Label}
     ) = new(from_locator, "http://www.xbrl.org/2003/arcrole/concept-label", order, labels)
 end
@@ -282,7 +282,7 @@ function get_arc_type(linkbase_type::LinkbaseType)::String
     return "LabelArc"
 end
 
-function create_arc_object(linkbase_type::LinkbaseType, locator_map::Dict{AbstractString, Locator}, arc_from::AbstractString, arc_to::AbstractString, arc_role::AbstractString, arc_order::Union{Int, Nothing}, arc_closed::Union{Bool, Nothing}, arc_context_element::Union{AbstractString, Nothing}, arc_weight::Union{Real, Nothing}, arc_prority::Union{Int, Nothing}, arc_preferred_label::Union{AbstractString, Nothing}, label_map::Dict{String, Vector{Label}})::AbstractArcElement
+function create_arc_object(linkbase_type::LinkbaseType, locator_map::Dict{AbstractString, Locator}, arc_from::AbstractString, arc_to::AbstractString, arc_role::AbstractString, arc_order::Union{Integer, Nothing}, arc_closed::Union{Bool, Nothing}, arc_context_element::Union{AbstractString, Nothing}, arc_weight::Union{Real, Nothing}, arc_prority::Union{Int, Nothing}, arc_preferred_label::Union{AbstractString, Nothing}, label_map::Dict{String, Vector{Label}})::AbstractArcElement
     linkbase_type == DEFINITION && return DefinitionArc(locator_map[arc_from], locator_map[arc_to], arc_role, arc_order, arc_closed, arc_context_element)
     linkbase_type == CALCULATION && return CalculationArc(locator_map[arc_from], locator_map[arc_to], arc_order, arc_weight)
     linkbase_type == PRESENTATION && return PresentationArc(locator_map[arc_from], locator_map[arc_to], arc_order, arc_prority, arc_preferred_label)
@@ -341,11 +341,11 @@ function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseTy
             arc_from::AbstractString = arc_element["xlink:from"]
             arc_to::AbstractString = arc_element["xlink:to"]
             arc_role::AbstractString = arc_element["xlink:arcrole"]
-            arc_order::Union{Int, Nothing} = haskey(arc_element, "order") ? trunc(Int, parse(Float64, arc_element["order"])) : nothing
+            arc_order::Union{Integer, Nothing} = haskey(arc_element, "order") ? trunc(Int, parse(Float64, arc_element["order"])) : nothing
             arc_closed::Union{Bool, Nothing} = haskey(arc_element, "xbrldt:weight") ? parse(Bool, arc_element["xbrldt:closed"]) : nothing
             arc_context_element::Union{AbstractString, Nothing} = haskey(arc_element, "xbrldt:contextElement") ? arc_element["xbrldt:contextElement"] : nothing
             arc_weight::Union{Real, Nothing} = haskey(arc_element, "weight") ? parse(Float64,arc_element["weight"]) : nothing
-            arc_priority::Union{Int, Nothing} = haskey(arc_element, "priority") ? trunc(Int, parse(Float64, arc_element["priority"])) : nothing
+            arc_priority::Union{Integer, Nothing} = haskey(arc_element, "priority") ? trunc(Int, parse(Float64, arc_element["priority"])) : nothing
             arc_preferred_label::Union{AbstractString, Nothing} = haskey(arc_element, "preferredLabel") ? arc_element["preferredLabel"] : nothing
 
             arc_object::AbstractArcElement = create_arc_object(linkbase_type, locator_map, arc_from, arc_to, arc_role, arc_order, arc_closed, arc_context_element, arc_weight, arc_priority, arc_preferred_label, label_map)
