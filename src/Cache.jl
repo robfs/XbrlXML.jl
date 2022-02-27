@@ -9,18 +9,16 @@ mutable struct HttpCache
     cache_dir::AbstractString
     headers::Dict{AbstractString, AbstractString}
 
-    HttpCache(cache_dir::AbstractString, headers::Dict{AbstractString,AbstractString}=Dict()) = new(
+    HttpCache(cache_dir="./cache/", headers=Dict{String,String}()) = new(
         endswith(cache_dir, "/") ? cache_dir : cache_dir * "/",
         headers
     )
 
-    HttpCache(headers::Dict{AbstractString,AbstractString}) = new("./cache/", headers)
+end
 
-    HttpCache(headers::Vector{Pair{AbstractString,AbstractString}}) = new("./cache/", Dict(headers))
 
     HttpCache() = new("./cache/", Dict())
 
-end
 
 HttpCache(cache_dir::AbstractString, headers::Vector{Pair{AbstractString,AbstractString}}) = HttpCache(cache_dir, Dict(headers))
 
