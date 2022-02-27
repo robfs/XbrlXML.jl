@@ -67,6 +67,49 @@ function cache_edgar_enclosure(cache::HttpCache, enclosure_url::AbstractString)
     else
         throw(error("This is not a valid zip folder"))
     end
+
+    return submission_dir_path
 end
+
+function find_entry_file(cache::HttpCache, dir::AbstractString)::Union{AbstractString,Nothing}
+
+    valid_files::Vector{AbstractString} = []
+
+    for ext in [".htm", ".xml", ".xsd"]
+        for f in readdir(dir, join=true)
+            isfile(f) && endswith(lowercase(f), ext) && push!(valid_files, f)
+        end
+    end
+
+    entry_candidates::Vector{AbstractString} = []
+
+    for file1 in valid_files
+        (fdir, file_nm) = rsplit(file1, Base.Filesystem.path_separator; limit=2)
+        found_in_other::Bool = false
+        for file2 in valid_files
+            if file1 != file2
+                file2contents::AbstractString = open(file2) do f
+                    read(f)
+                end
+                if occursin(file_nm, file2contents)
+                    found_in_other = true
+                    break
+                end
+            end
+        end
+
+        !found_in_other && push!(entry_candidates, (file1, fileszie(file1)))
+    end
+
+    sort!(entry_candidates; by=x -> x[2], rev=true)
+
+    if length(entry_candidates) > 0
+        (file_path, size) = entry_candidates[1]
+        return file_path
+    end
+
+    return nothing
+end
+
 
 end # Module
