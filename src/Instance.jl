@@ -1,6 +1,7 @@
 module Instance
 
 include("uri_helper.jl")
+include("transformation.jl")
 
 using ..EzXML, ..Cache, ..Taxonomy, Dates
 
@@ -253,50 +254,6 @@ function parse_ixbrl(instance_path::AbstractString, cache::HttpCache, instance_u
     return XbrlInstance(instance_url isa Nothing ? instance_path : instance_url, taxonomy, facts, context_dir, unit_dir)
 end
 
-function _extract_ixbrl_value(fact_elem::EzXML.Node)::Union{Real,AbstractString}
-
-    raw_text::AbstractString = fact_elem.content
-
-    value_scale::Int = trunc(Int, parse(Float64, node_get(fact_elem, "scale", "0")))
-    value_sign::Union{AbstractString,Nothing} = node_get(fact_elem, "sign", nothing)
-
-    if !(haskey(fact_elem, "format"))
-        haskey(fact_elem, "unitRef") && return strip(raw_text)
-        try
-            raw_value::Union{AbstractString,Real} = parse(Float64, raw_text)
-        catch
-            raw_value = strip(raw_text)
-        end
-    else
-        value_format::AbstractString = split(fact_elem["format"], ":")[2]
-        if value_format == "numcommadecimal"
-            raw_value = parse(Float64, replace(strip(raw_text), r"(\s|-|\.)" => "", "," => "."))
-        elseif value_format == "numdotdecimal"
-            raw_value = parse(Float64, replace(strip(raw_text), r"(\s|-|,)" => ""))
-        elseif value_format == "datemonthdayen"
-            delimiter::String = occursin("-", raw_text) ? "-" : " "
-            monthformat::String = length(split(raw_text, delimiter)[1]) == 3 ? "u" : "U"
-            datefmt::DateFormat = DateFormat(monthformat * delimiter * "d")
-            raw_value = Dates.format(Date(raw_text, datefmt), "--m-dd")
-        elseif value_format == "numwordsen" && lowercase(strip(raw_text)) in ("no", "none")
-            raw_value = 0.0
-        else
-            raw_value = strip(raw_text)
-        end
-    end
-
-    if raw_value isa Real
-        raw_value *= (10 ^ value_scale)
-        if abs(raw_value) > 1e6
-            raw_value = round(raw_value)
-        end
-        if value_sign == "-"
-            raw_value *= -1
-        end
-    end
-
-    return raw_value
-end
 
 function _extract_non_numeric_value(fact_elem::EzXML.Node)::AbstractString
 
@@ -309,9 +266,9 @@ function _extract_non_numeric_value(fact_elem::EzXML.Node)::AbstractString
     fact_format::Union{AbstractString,Nothing} = node_get(fact_elem, "format", nothing)
     if !(fact_format isa Nothing)
         if startswith(fact_format, "ixt:")
-            fact_value = _normalize_transformed_value(fact_value, split(fact_format, ":")[2])
+            fact_value = transform_ixt(fact_value, split(fact_format, ":")[2])
         elseif startswith(fact_format, "ixt-sec")
-
+            fact_value = transform_ixt_sec(fact_value, fact_format)
         end
     end
 
@@ -336,9 +293,9 @@ function _extract_non_fraction_value(fact_elem::EzXML.Node)::Union{Real,Nothing}
 
     if !(fact_format isa Nothing)
         if startswith(fact_format, "ixt:")
-            fact_value = _normalize_transformed_value(fact_value, split(fact_format, ":")[2])
+            fact_value = transform_ixt(fact_value, split(fact_format, ":")[2])
         elseif startswith(fact_format, "ixt-sec")
-
+            fact_value = transform_ixt_sec(fact_value, split(fact_format, ":")[2])
         end
     end
 
@@ -354,56 +311,6 @@ function _extract_non_fraction_value(fact_elem::EzXML.Node)::Union{Real,Nothing}
     return scaled_value
 end
 
-function _normalize_transformed_value(value::AbstractString, transform_format::AbstractString)::AbstractString
-
-    value::AbstractString = strip(lowercase(value))
-
-    transform_format == "booleanfalse" && return "false"
-    transform_format == "booleantrue" && return "true"
-    transform_format == "zerodash" && return "0"
-    transform_format == "nocontent" && ""
-
-    if startswith(transform_format, "date")
-        value = replace(value, r"[,\-\._]" => " ")
-        value = replace(value, r"\s{2,}" => " ")
-        seg::Vector{AbstractString} = split(value, " ")
-
-        if transform_format == "datedaymonth"
-            return Dates.format(Date(value, "d m"), "--mm-dd")
-        elseif transform_format == "datedaymonthen"
-            monthformat::String = length(seg[2]) == 3 ? "u" : "U"
-            return Dates.format(Date(value, "d $(monthformat)"), "--mm-dd")
-        elseif transform_format == "datedaymonthyear"
-            return Dates.format(Date(value, dateformat"d m y"), "Y-mm-dd")
-        elseif transform_format == "datedaymonthyearen"
-            monthformat = length(seg[2]) == 3 ? "u" : "U"
-            return Dates.format(Date(value, dateformat"d $(monthformat) y"), "Y-mm-dd")
-        elseif transform_format == "datemonthday"
-            return Dates.format(Date(value, "m d"), "--mm-dd")
-        elseif transform_format == "datemonthdayen"
-            monthformat = length(seg[1]) == 3 ? "u" : "U"
-            return Dates.format(Date(value, "$(monthformat) d"), "--mm-dd")
-        elseif transform_format == "datemonthdayyear"
-            return Dates.format(Date(value, "m d y"), "Y-mm-dd")
-        elseif transform_format == "datemonthdayyearen"
-            monthformat = length(seg[1]) == 3 ? "u" : "U"
-            return Dates.format(Date(value, "$(monthformat) d y"), "Y-mm-dd")
-        elseif transform_format == "dateyearmonthday"
-            return Dates.format(Date(value, "y m d"), "Y-mm-dd")
-        elseif transform_format == "dateyearmonthdayen"
-            monthformat = length(seg[2]) == 3 ? "u" : "U"
-            return Dates.format(Date(value, "y $(monthformat) d"), "Y-mm-dd")
-        end
-    elseif startswith(transform_format, "num")
-        if transform_format == "numcommadecimal"
-            return replace(value, r"(\s|-|\.)" => "", "," => ".")
-        elseif transform_format == "numdotdecimal"
-            return replace(value, r"(\s|-|,)" => "")
-        end
-    else
-        throw(error("Unknown fact transformation $(format)"))
-    end
-end
 
 
 function _parse_context_elements(

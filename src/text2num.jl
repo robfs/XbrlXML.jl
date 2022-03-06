@@ -43,7 +43,7 @@ ORDEROFMAGNITUDE = Dict([
     "decillion" => 1000000000000000000000000000000000,
 ])
 
-function text2num(s::AbstractString)::Integer
+function text2num(s::AbstractString)::Real
     s = replace(lowercase(s), " and " => " ")
     re::Regex = r"[\s-]+"
     a::Vector{AbstractString} = split(s, re)
@@ -67,3 +67,5 @@ function text2num(s::AbstractString)::Integer
     end
     return n + g
 end
+
+text2num(x::Real)::Real = x
