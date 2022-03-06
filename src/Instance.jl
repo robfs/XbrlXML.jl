@@ -268,7 +268,7 @@ function _extract_non_numeric_value(fact_elem::EzXML.Node)::AbstractString
         if startswith(fact_format, "ixt:")
             fact_value = transform_ixt(fact_value, split(fact_format, ":")[2])
         elseif startswith(fact_format, "ixt-sec")
-            fact_value = transform_ixt_sec(fact_value, fact_format)
+            fact_value = transform_ixt_sec(fact_value, split(fact_format, ":")[2])
         end
     end
 

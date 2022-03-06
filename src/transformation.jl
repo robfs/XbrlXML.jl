@@ -67,6 +67,8 @@ end
 function transform_ixt_sec(value::AbstractString, transform_format::AbstractString)::AbstractString
 
     value = replace(strip(lowercase(value)), "\xa0" => " ")
+    value = replace(value, r"[,\-\._/]" => " ")
+    value = replace(value, r"\s{2,}" => " ")
 
     if transform_format == "numwordsen"
         if value == "no" || value == "none"
@@ -74,7 +76,30 @@ function transform_ixt_sec(value::AbstractString, transform_format::AbstractStri
         else
             return "$(text2num(value))"
         end
+    elseif transform_format == "boolballotbox"
+        if value == "☐"
+            return "false"
+        else
+            return "true"
+        end
+    elseif transform_format == "durwordsen"
+        value = replace_text_numbers(value)
+        seg = split(value, r"\D"; keepempty=false)
+        return "P$(seg[1])Y$(seg[2])M"
     end
 
     throw(error("Unknown fact transformation $(transform_format)"))
+end
+
+function replace_text_numbers(text::AbstractString)::AbstractString
+    text = replace(strip(lowercase(text)), "\xa0" => " ")
+    seg::Vector{AbstractString} = split(text, " ")
+    for (i, x) in enumerate(seg)
+        try
+            seg[i] = "$(text2num(x))"
+        catch
+            continue
+        end
+    end
+    return join(seg, " ")
 end
