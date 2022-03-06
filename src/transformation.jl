@@ -41,6 +41,16 @@ function transform_ixt(value::AbstractString, transform_format::AbstractString):
         elseif transform_format == "dateyearmonthdayen"
             monthformat = length(seg[2]) == 3 ? "u" : "U"
             return Dates.format(Date(value, "y $(monthformat) d"), "Y-mm-dd")
+        elseif transform_format == "datemonthyear"
+            return Dates.format(Date(value, "m y"), "Y-mm")
+        elseif transform_format == "datemonthyearen"
+            monthformat = length(seg[1]) == 3 ? "u" : "U"
+            return Dates.format(Date(value, "$(monthformat) y"), "Y-mm")
+        elseif transform_format == "dateyearmonth"
+            return Dates.format(Date(value, "y m"), "Y-mm")
+        elseif transform_format == "dateyearmonthen"
+            monthformat = length(seg[2]) == 3 ? "u" : "U"
+            return Dates.format(Date(value, "y $(monthformat)"), "Y-mm")
         end
     elseif startswith(transform_format, "num")
         if transform_format == "numcommadecimal"
