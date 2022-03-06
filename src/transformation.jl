@@ -12,7 +12,7 @@ function transform_ixt(value::AbstractString, transform_format::AbstractString):
     transform_format == "nocontent" && ""
 
     if startswith(transform_format, "date")
-        value = replace(value, r"[,\-\._]" => " ")
+        value = replace(value, r"[,\-\._/]" => " ")
         value = replace(value, r"\s{2,}" => " ")
         seg::Vector{AbstractString} = split(value, " ")
 

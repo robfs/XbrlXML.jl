@@ -260,7 +260,7 @@ function _extract_non_numeric_value(fact_elem::EzXML.Node)::AbstractString
     fact_value::AbstractString = fact_elem.content
 
     for child in eachelement(fact_elem)
-        fact_value *= _extract_non_numeric_value(child)
+        fact_value *= _extract_text_value(child)
     end
 
     fact_format::Union{AbstractString,Nothing} = node_get(fact_elem, "format", nothing)
@@ -284,7 +284,7 @@ function _extract_non_fraction_value(fact_elem::EzXML.Node)::Union{Real,Nothing}
     fact_value::AbstractString = fact_elem.content
 
     for child in eachelement(fact_elem)
-        fact_value *= _extract_non_numeric_value(child)
+        fact_value *= _extract_text_value(child)
     end
 
     fact_format::Union{AbstractString,Nothing} = node_get(fact_elem, "format", nothing)
@@ -311,6 +311,14 @@ function _extract_non_fraction_value(fact_elem::EzXML.Node)::Union{Real,Nothing}
     return scaled_value
 end
 
+
+function _extract_text_value(element::EzXML.Node)::AbstractString
+    text::AbstractString = element.content
+    for child in eachelement(element)
+        text *= _extract_text_value(child)
+    end
+    return text
+end
 
 
 function _parse_context_elements(
