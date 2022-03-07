@@ -4,7 +4,7 @@ include("text2num.jl")
 
 function transform_ixt(value::AbstractString, transform_format::AbstractString)::AbstractString
 
-    value::AbstractString = replace(strip(lowercase(value)), "\xa0" => " ")
+    value = replace(strip(lowercase(value)), '\ua0' => " ")
 
     transform_format == "booleanfalse" && return "false"
     transform_format == "booleantrue" && return "true"
