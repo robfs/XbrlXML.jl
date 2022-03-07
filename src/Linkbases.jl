@@ -85,14 +85,14 @@ struct RelationArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
     arcrole::AbstractString
-    order::Integer
+    order::Union{Integer,Nothing}
 end
 
 struct DefinitionArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
     arcrole::AbstractString
-    order::Integer
+    order::Union{Integer,Nothing}
     closed::Union{Bool, Nothing}
     context_element::Union{AbstractString, Nothing}
 
@@ -100,7 +100,7 @@ struct DefinitionArc <: AbstractArcElement
         from_locator::Locator,
         to_locator::Locator,
         arcrole::AbstractString,
-        order::Integer,
+        order::Union{Integer,Nothing},
         closed::Union{Bool, Nothing}=nothing,
         context_element::Union{AbstractString, Nothing}=nothing) = new(
             from_locator, to_locator, arcrole, order, closed, context_element
@@ -122,14 +122,14 @@ struct CalculationArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
     arcrole::AbstractString
-    order::Integer
-    weight::Real
+    order::Union{Integer,Nothing}
+    weight::Union{Real,Nothing}
 
     CalculationArc(
         from_locator::Locator,
         to_locator::Locator,
-        order::Integer,
-        weight::Real) = new(
+        order::Union{Integer,Nothing},
+        weight::Union{Real,Nothing}) = new(
             from_locator, to_locator, "http://www.xbrl.org/2003/arcrole/summation-item", order, weight
         )
 end
@@ -148,15 +148,15 @@ struct PresentationArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
     arcrole::AbstractString
-    order::Integer
-    priority::Integer
+    order::Union{Integer,Nothing}
+    priority::Union{Integer,Nothing}
     preferred_label::Union{AbstractString, Nothing}
 
     PresentationArc(
         from_locator::Locator,
         to_locator::Locator,
-        order::Integer,
-        priority::Integer,
+        order::Union{Integer,Nothing},
+        priority::Union{Integer,Nothing},
         preferred_label::Union{AbstractString, Nothing}=nothing) = new(
             from_locator,
             to_locator,
