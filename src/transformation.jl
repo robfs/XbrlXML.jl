@@ -5,10 +5,13 @@ include("text2num.jl")
 function transform_ixt(value::AbstractString, transform_format::AbstractString)::AbstractString
 
     value = replace(strip(lowercase(value)), '\ua0' => " ")
+    transform_format = replace(transform_format, "-" => "")
 
     transform_format == "booleanfalse" && return "false"
     transform_format == "booleantrue" && return "true"
     transform_format == "zerodash" && return "0"
+    transform_format == "fixedzero" && return "0"
+    transform_format == "fixedtrue" && return "true"
     transform_format == "nocontent" && ""
 
     if startswith(transform_format, "date")
@@ -33,7 +36,7 @@ function transform_ixt(value::AbstractString, transform_format::AbstractString):
             return Dates.format(Date(value, "$(monthformat) d"), "--mm-dd")
         elseif transform_format == "datemonthdayyear"
             return Dates.format(Date(value, "m d y"), "Y-mm-dd")
-        elseif transform_format == "datemonthdayyearen"
+        elseif transform_format == "datemonthdayyearen" || transform_format == "datemonthnamedayyearen"
             monthformat = length(seg[1]) == 3 ? "u" : "U"
             return Dates.format(Date(value, "$(monthformat) d y"), "Y-mm-dd")
         elseif transform_format == "dateyearmonthday"
@@ -51,6 +54,8 @@ function transform_ixt(value::AbstractString, transform_format::AbstractString):
         elseif transform_format == "dateyearmonthen"
             monthformat = length(seg[2]) == 3 ? "u" : "U"
             return Dates.format(Date(value, "y $(monthformat)"), "Y-mm")
+        else
+            throw(error("Unknown date transformation $(transform_format), $(value)"))
         end
     elseif startswith(transform_format, "num")
         if transform_format == "numcommadecimal"
@@ -59,7 +64,7 @@ function transform_ixt(value::AbstractString, transform_format::AbstractString):
             return replace(value, r"(\s|-|,)" => "")
         end
     else
-        throw(error("Unknown fact transformation $(format)"))
+        throw(error("Unknown fact transformation $(transform_format)"))
     end
 end
 
@@ -84,11 +89,27 @@ function transform_ixt_sec(value::AbstractString, transform_format::AbstractStri
         end
     elseif transform_format == "durwordsen"
         value = replace_text_numbers(value)
-        seg = split(value, r"\D"; keepempty=false)
-        return "P$(seg[1])Y$(seg[2])M"
+        (years, months, days) = (0, 0, 0)
+        words::Vector{AbstractString} = split(value, " ")
+        for (i, x) in enumerate(words)
+
+            if tryparse(Int, x) isa Nothing
+                continue
+            elseif occursin("year", words[i + 1])
+                years = parse(Int, x)
+            elseif occursin("month", words[i + 1])
+                months = parse(Int, x)
+            elseif occursin("day", words[i + 1])
+                days = parse(Int, x)
+            end
+        end
+
+        return "P$(years)Y$(months)M$(days)D"
     end
 
-    throw(error("Unknown fact transformation $(transform_format)"))
+    @warn "The transformation rule ixt-sec:$(transform_format) is currently not supported by this parser."
+
+    return value
 end
 
 function replace_text_numbers(text::AbstractString)::AbstractString
