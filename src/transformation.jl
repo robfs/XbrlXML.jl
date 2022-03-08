@@ -1,5 +1,7 @@
 using Dates
 
+_WARNED_TRANSFORMERS = []
+
 include("text2num.jl")
 
 function transform_ixt(value::AbstractString, transform_format::AbstractString)::AbstractString
@@ -107,7 +109,12 @@ function transform_ixt_sec(value::AbstractString, transform_format::AbstractStri
         return "P$(years)Y$(months)M$(days)D"
     end
 
-    @warn "The transformation rule ixt-sec:$(transform_format) is currently not supported by this parser."
+    if !(transform_format in _WARNED_TRANSFORMERS)
+
+        @warn "The transformation rule ixt-sec:$(transform_format) is currently not supported by this parser."
+        push!(_WARNED_TRANSFORMERS, transform_format)
+
+    end
 
     return value
 end
