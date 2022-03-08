@@ -5,7 +5,7 @@ include("transformation.jl")
 
 using ..EzXML, ..Cache, ..Taxonomy, Dates
 
-export parse_instance
+export XbrlInstance, parse_instance
 
 NAME_SPACES = [
     "xsd" => "http://www.w3.org/2001/XMLSchema",

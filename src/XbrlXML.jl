@@ -14,6 +14,6 @@ using .Taxonomy
 include("Instance.jl")
 using .Instance
 
-export HttpCache, parse_instance
+export HttpCache, XbrlInstance, parse_instance
 
 end
