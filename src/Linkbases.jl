@@ -322,7 +322,7 @@ function create_arc_object(linkbase_type::LinkbaseType, locator_map::Dict{Abstra
 end
 
 
-function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseType, linkbase_url::Union{AbstractString,Union}=nothing):: Linkbase
+function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseType, linkbase_url::Union{AbstractString,Nothing}=nothing):: Linkbase
 
     startswith(linkbase_path, "http") && throw("This function only parses locally saved linkbases.")
 
