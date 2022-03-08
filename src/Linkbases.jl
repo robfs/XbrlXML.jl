@@ -61,6 +61,10 @@ mutable struct Locator
     )
 end
 
+Base.show(io::IO, l::Locator) = print(
+    io, "$(l.name) with $(length(l.children)) children"
+)
+
 function to_dict(locator::Locator)::Dict{String, Any}
     ps::Vector{Pair{String, Any}} = [
         "name" => locator.name,
@@ -107,6 +111,14 @@ struct DefinitionArc <: AbstractArcElement
         )
 end
 
+Base.show(io::IO, a::DefinitionArc) = print(
+    io,
+    "Linking to ",
+    a.to_locator.name,
+    " as ",
+    split(a.arcrole, Base.Filesystem.path_separator)[end]
+)
+
 function to_dict(arc::RelationArc)::Dict{String, Any}
     ps::Vector{Pair{String, Any}} = [
         "arcrole" => arc.arcrole,
@@ -133,6 +145,13 @@ struct CalculationArc <: AbstractArcElement
             from_locator, to_locator, "http://www.xbrl.org/2003/arcrole/summation-item", order, weight
         )
 end
+
+Base.show(io::IO, a::CalculationArc) = print(
+    io,
+    split(a.arcrole, Base.Filesystem.path_separator)[end],
+    " ",
+    a.to_locator.concept_id
+)
 
 function to_dict(arc::CalculationArc)::Dict{String, Any}
     ps::Vector{Pair{String, Any}} = [
@@ -167,6 +186,13 @@ struct PresentationArc <: AbstractArcElement
         )
 end
 
+Base.show(io::IO, a::PresentationArc) = print(
+    io,
+    split(a.arcrole, Base.Filesystem.path_separator)[end],
+    " ",
+    a.to_locator.concept_id
+)
+
 function to_dict(arc::PresentationArc)::Dict{String, Any}
     ps::Vector{Pair{String, Any}} = [
         "arcrole" => arc.arcrole,
@@ -196,6 +222,8 @@ struct Label
     )
 end
 
+Base.show(io::IO, l::Label) = print(io, l.text)
+
 struct LabelArc <: AbstractArcElement
     from_locator::Locator
     arcrole::AbstractString
@@ -208,6 +236,8 @@ struct LabelArc <: AbstractArcElement
         labels::Vector{Label}
     ) = new(from_locator, "http://www.xbrl.org/2003/arcrole/concept-label", order, labels)
 end
+
+Base.show(io::IO, a::LabelArc) = print(io, "LabelArc with $(length(a.labels)) labels")
 
 function to_dict(arc::LabelArc)::Dict{AbstractString, Any}
     ps::Vector{Pair{AbstractString, Union{AbstractString, nothing}}} = []
@@ -222,6 +252,8 @@ struct ExtendedLink
     elr_id::Union{AbstractString, Nothing}
     root_locators::Vector{Locator}
 end
+
+Base.show(io::IO, l::ExtendedLink) = print(io, l.elr_id)
 
 function to_dict(link::ExtendedLink)::Dict{String, Any}
     ps::Vector{Pair{String, Any}} = [

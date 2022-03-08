@@ -74,6 +74,8 @@ mutable struct Concept
     )
 end
 
+Base.show(io::IO, c::Concept) = print(io, c.name)
+
 mutable struct ExtendedLinkRole
     xml_id::AbstractString
     uri::AbstractString
@@ -86,6 +88,8 @@ mutable struct ExtendedLinkRole
         role_id, uri, definition, nothing, nothing, nothing
     )
 end
+
+Base.show(io::IO, elr::ExtendedLinkRole) = print(io, elr.definition)
 
 mutable struct TaxonomySchema
     schema_url::AbstractString
@@ -103,6 +107,8 @@ mutable struct TaxonomySchema
         schema_url, namespace, [], [], [], [], [], [], Dict(), Dict()
     )
 end
+
+Base.show(io::IO, ts::TaxonomySchema) = print(io, ts.namespace)
 
 function get_taxonomy(schema::TaxonomySchema, url::AbstractString)::Union{TaxonomySchema, Nothing}
     if compare_uri(schema.namespace, url) || compare_uri(schema.schema_url, url)

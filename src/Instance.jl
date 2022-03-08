@@ -25,6 +25,9 @@ struct ExplicitMember
     member::Concept
 end
 
+Base.show(io::IO, m::ExplicitMember) = print(
+    io, "$(m.member.name) on dimension $(m.dimension.name)"
+)
 
 abstract type AbstractContext end
 
@@ -44,6 +47,10 @@ mutable struct InstantContext <: AbstractContext
 
 end
 
+Base.show(io::IO, c::InstantContext) = print(
+    io, "$(c.instant_date) $(length(c.segments)) dimension"
+)
+
 mutable struct TimeFrameContext <: AbstractContext
     xml_id::AbstractString
     entity::AbstractString
@@ -60,6 +67,10 @@ mutable struct TimeFrameContext <: AbstractContext
     )
 end
 
+Base.show(io::IO, c::TimeFrameContext) = print(
+    io, "$(c.start_date) to $(c.end_date) $(length(c.segments)) dimension"
+)
+
 mutable struct ForeverContext <: AbstractContext
     xml_id::AbstractString
     entity::AbstractString
@@ -75,11 +86,15 @@ struct SimpleUnit <: AbstractUnit
     unit::AbstractString
 end
 
+Base.show(io::IO, u::SimpleUnit) = print(io, self.unit)
+
 struct DivideUnit <: AbstractUnit
     unit_id::AbstractString
     numerator::AbstractString
     denominator::AbstractString
 end
+
+Base.show(io::IO, u::SimpleUnit) = print(io, u.numerator, "/", u.denominator)
 
 struct Footnote
     content::AbstractString
@@ -88,6 +103,10 @@ end
 
 
 abstract type AbstractFact end
+
+Base.show(io::IO, f::AbstractFact) = print(
+    io, f.concept.name, ": ", f.value
+)
 
 struct NumericFact <: AbstractFact
     concept::Concept
@@ -118,6 +137,12 @@ struct XbrlInstance
     context_map::Dict
     unit_map::Dict
 end
+
+Base.show(io::IO, i::XbrlInstance) = print(
+    io,
+    split(i.instance_url, Base.Filesystem.path_separator)[end],
+    " with ", length(i.facts), " facts"
+)
 
 function parse_xbrl_url(instance_url::AbstractString, cache::HttpCache)::XbrlInstance
     instance_path::AbstractString = cache_file(cache, instance_url)
