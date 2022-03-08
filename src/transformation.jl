@@ -73,7 +73,7 @@ end
 
 function transform_ixt_sec(value::AbstractString, transform_format::AbstractString)::AbstractString
 
-    value = replace(strip(lowercase(value)), "\xa0" => " ")
+    value = replace(strip(lowercase(value)), '\ua0' => " ")
     value = replace(value, r"[,\-\._/]" => " ")
     value = replace(value, r"\s{2,}" => " ")
 
@@ -111,7 +111,7 @@ function transform_ixt_sec(value::AbstractString, transform_format::AbstractStri
 
     if !(transform_format in _WARNED_TRANSFORMERS)
 
-        @warn "The transformation rule ixt-sec:$(transform_format) is currently not supported by this parser."
+        @info "The transformation rule ixt-sec:$(transform_format) is currently not supported by this parser."
         push!(_WARNED_TRANSFORMERS, transform_format)
 
     end
