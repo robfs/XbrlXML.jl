@@ -126,6 +126,12 @@ end
 
 facts(instance::XbrlInstance) = instance.facts
 
+function _trimmedfactvalue(fact::TextFact)
+    start::Int = startswith(fact.value, '\n') ? 2 : 1
+    length(fact.value) <= 30 && return fact.value[start:end]
+    return fact.value[start:27] * "..."
+end
+
 Base.show(io::IO, m::ExplicitMember) = print(
     io, "$(m.member.name) on dimension $(m.dimension.name)"
 )
@@ -137,8 +143,11 @@ Base.show(io::IO, c::TimeFrameContext) = print(
 )
 Base.show(io::IO, u::SimpleUnit) = print(io, self.unit)
 Base.show(io::IO, u::DivideUnit) = print(io, u.numerator, "/", u.denominator)
-Base.show(io::IO, f::AbstractFact) = print(
+Base.show(io::IO, f::NumericFact) = print(
     io, f.concept.name, ": ", f.value
+)
+Base.show(io::IO, f::TextFact) = print(
+    io, f.concept.name, ": ", _trimmedfactvalue(f)
 )
 Base.show(io::IO, i::XbrlInstance) = print(
     io,
