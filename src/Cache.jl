@@ -1,3 +1,6 @@
+"""
+Provides interface to local store of files used for parsing XBRL.
+"""
 module Cache
 
 using Downloads
@@ -7,38 +10,82 @@ export HttpCache
 export cacheheader!, cacheheaders!, cacheheaders, cachedir
 export cachefile, purgefile, urltopath, cache_edgar_enclosure
 
-mutable struct HttpCache
-    cachedir::AbstractString
-    headers::Dict{AbstractString, AbstractString}
+"""
+    HttpCache(cache_dir="./cache/", headers=Dict())
 
-    HttpCache(cachedir="./cache/", headers=Dict{String,String}()) = new(
+Create a cache to store files locally for reuse.
+
+`headers` are passed to http `Downloads.download`. Services such as SEC require you to
+disclose information about your application.
+
+# Example
+```julia-repl
+julia> cache = HttpCache("/Users/user/cache/")
+/Users/user/cache/
+
+julia> cacheheader!(cache, "User-Agent" => "You youremail@domain.com")
+Dict{AbstractString, AbstractString} with 1 entry:
+  "User-Agent" => "You youremail@domain.com"
+```
+"""
+mutable struct HttpCache
+    cachedir::String
+    headers::Dict{String, String}
+
+    HttpCache(cachedir="./cache/", headers=Dict()) = new(
         endswith(cachedir, "/") ? cachedir : cachedir * "/",
         headers
     )
 
 end
 
-cachedir(cache::HttpCache) = cache.cachedir
-cacheheaders(cache::HttpCache) = cache.headers
+"""
+    cachedir(cache::HttpCache)::String
+
+Return the local directory of a cache.
+"""
+cachedir(cache::HttpCache)::String = cache.cachedir
+
+"""
+    cacheheaders(cache::HttpCache)::Dict
+
+Return the headers of a cache.
+"""
+cacheheaders(cache::HttpCache)::Dict{String,String} = cache.headers
 
 Base.show(io::IO, c::HttpCache) = print(
     io, "$(abspath(cachedir(c)))"
 )
 
-function cacheheader!(cache::HttpCache, header::Pair{String,String})
+"""
+    cacheheader!(cache::HttpCache, header::Pair)::Dict
+
+Add a header pair to a cache and return the headers.
+"""
+function cacheheader!(cache::HttpCache, header::Pair{String,String})::Dict{String,String}
     get!(cache.headers, header.first, header.second)
     return cacheheaders(cache)
 end
 
+"""
+    cacheheaders!(cache::HttpCache, header::Vector{Pair})::Dict
+
+Add multiple header pairs to a cache and return the headers.
+"""
 function cacheheaders!(cache::HttpCache, headers::Vector{Pair{String,String}})
     for header in headers
         cacheheader!(cache, header)
     end
 end
 
-function cachefile(cache::HttpCache, file_url::AbstractString)::AbstractString
+"""
+    cachefile(cache::HttpCache, file_url)::String
 
-    file_path::AbstractString = urltopath(cache, file_url)
+Save a file located at `file_url` to a local cache.
+"""
+function cachefile(cache::HttpCache, file_url::String)::String
+
+    file_path::String = urltopath(cache, file_url)
 
     isfile(file_path) && return file_path
 
@@ -52,7 +99,12 @@ function cachefile(cache::HttpCache, file_url::AbstractString)::AbstractString
 
 end
 
-function purgefile(cache::HttpCache, file_url::AbstractString)::Bool
+"""
+    purgefile(cache::HttpCache, file_url)::Bool
+
+Remove a file, based on its URL, from a local cache.
+"""
+function purgefile(cache::HttpCache, file_url::String)::Bool
     try
         rm(urltopath(cache, file_url))
     catch
@@ -61,12 +113,21 @@ function purgefile(cache::HttpCache, file_url::AbstractString)::Bool
     return true
 end
 
-function urltopath(cache::HttpCache, url::AbstractString)::AbstractString
-    rep::Pair{Regex, AbstractString} = r"https?://" => ""
+"""
+    urltopath(cache::HttpCache, url)::String
+
+Convert a file's `url` to a local cache file.
+"""
+function urltopath(cache::HttpCache, url::String)::String
+    rep::Pair{Regex, String} = r"https?://" => ""
     return cachedir(cache) * replace(url, rep)
 end
 
-function cache_edgar_enclosure(cache::HttpCache, enclosure_url::AbstractString)
+"""
+    cache_edgar_enclosure(cache::HttpCache, enclosure_url)
+
+"""
+function cache_edgar_enclosure(cache::HttpCache, enclosure_url::String)::String
 
     if endswith(enclosure_url, ".zip")
 
@@ -74,7 +135,7 @@ function cache_edgar_enclosure(cache::HttpCache, enclosure_url::AbstractString)
 
         parent_path::AbstractString = join(split(enclosure_url, "/")[1:end-1], "/")
 
-        submission_dir_path::AbstractString = urltopath(cache, parent_path)
+        submission_dir_path::String = urltopath(cache, parent_path)
 
         r::ZipFile.Reader = ZipFile.Reader(enclosure_path)
 
@@ -91,7 +152,7 @@ function cache_edgar_enclosure(cache::HttpCache, enclosure_url::AbstractString)
     return submission_dir_path
 end
 
-function find_entry_file(cache::HttpCache, dir::AbstractString)::Union{AbstractString,Nothing}
+function find_entry_file(cache::HttpCache, dir::String)::Union{String,Nothing}
 
     valid_files::Vector{AbstractString} = []
 
@@ -124,7 +185,7 @@ function find_entry_file(cache::HttpCache, dir::AbstractString)::Union{AbstractS
     sort!(entry_candidates; by=x -> x[2], rev=true)
 
     if length(entry_candidates) > 0
-        (file_path, size) = entry_candidates[1]
+        (file_path::String, size) = entry_candidates[1]
         return file_path
     end
 
