@@ -8,16 +8,17 @@ using ..EzXML, ..Cache, ..Linkbases
 
 import HTTP: unescapeuri
 
-export Concept, TaxonomySchema, parse_taxonomy, parse_common_taxonomy, parse_taxonomy_url, get_taxonomy
+export Concept, TaxonomySchema, ExtendedLinkRole
+export parse_taxonomy, parse_common_taxonomy, parse_taxonomy_url, get_taxonomy
 
-NAME_SPACES = Dict([
+const NAME_SPACES = [
     "xsd" => "http://www.w3.org/2001/XMLSchema",
     "link" => "http://www.xbrl.org/2003/linkbase",
     "xlink" => "http://www.w3.org/1999/xlink",
     "xbrldt" => "http://xbrl.org/2005/xbrldt"
-])
+]
 
-NS_SCHEMA_MAP = Dict([
+const NS_SCHEMA_MAP = Dict([
         "http://fasb.org/srt/2018-01-31" => "http://xbrl.fasb.org/srt/2018/elts/srt-2018-01-31.xsd",
         "http://fasb.org/srt/2019-01-31" => "http://xbrl.fasb.org/srt/2019/elts/srt-2019-01-31.xsd",
         "http://fasb.org/srt/2020-01-31" => "http://xbrl.fasb.org/srt/2020/elts/srt-2020-01-31.xsd",
@@ -74,8 +75,6 @@ mutable struct Concept
     )
 end
 
-Base.show(io::IO, c::Concept) = print(io, c.name)
-
 mutable struct ExtendedLinkRole
     xml_id::AbstractString
     uri::AbstractString
@@ -88,8 +87,6 @@ mutable struct ExtendedLinkRole
         role_id, uri, definition, nothing, nothing, nothing
     )
 end
-
-Base.show(io::IO, elr::ExtendedLinkRole) = print(io, elr.definition)
 
 mutable struct TaxonomySchema
     schema_url::AbstractString
@@ -108,8 +105,6 @@ mutable struct TaxonomySchema
     )
 end
 
-Base.show(io::IO, ts::TaxonomySchema) = print(io, ts.namespace)
-
 function get_taxonomy(schema::TaxonomySchema, url::AbstractString)::Union{TaxonomySchema, Nothing}
     if compare_uri(schema.namespace, url) || compare_uri(schema.schema_url, url)
         return schema
@@ -122,8 +117,8 @@ function get_taxonomy(schema::TaxonomySchema, url::AbstractString)::Union{Taxono
 end
 
 function parse_common_taxonomy(cache::HttpCache, namespace::AbstractString)::Union{TaxonomySchema, Nothing}
-    ns_map::Dict{String,String} = NS_SCHEMA_MAP
-    haskey(ns_map, namespace) && return parse_taxonomy_url(ns_map[namespace], cache)
+    ns_schema_map::Dict{String,String} = NS_SCHEMA_MAP
+    haskey(ns_schema_map, namespace) && return parse_taxonomy_url(ns_schema_map[namespace], cache)
     return nothing
 end
 
@@ -200,10 +195,10 @@ function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union
             linkbase = parse_linkbase(linkbase_path, linkbase_type)
         end
 
-        linkbase_type == DEFINITION && push!(taxonomy.def_linkbases, linkbase)
-        linkbase_type == CALCULATION && push!(taxonomy.cal_linkbases, linkbase)
-        linkbase_type == PRESENTATION && push!(taxonomy.pre_linkbases, linkbase)
-        linkbase_type == LABEL && push!(taxonomy.lab_linkbases, linkbase)
+        linkbase_type == Linkbases.DEFINITION && push!(taxonomy.def_linkbases, linkbase)
+        linkbase_type == Linkbases.CALCULATION && push!(taxonomy.cal_linkbases, linkbase)
+        linkbase_type == Linkbases.PRESENTATION && push!(taxonomy.pre_linkbases, linkbase)
+        linkbase_type == Linkbases.LABEL && push!(taxonomy.lab_linkbases, linkbase)
 
     end
 
@@ -263,5 +258,8 @@ function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union
     return taxonomy
 end
 
+Base.show(io::IO, c::Concept) = print(io, c.name)
+Base.show(io::IO, elr::ExtendedLinkRole) = print(io, elr.definition)
+Base.show(io::IO, ts::TaxonomySchema) = print(io, ts.namespace)
 
 end # Module

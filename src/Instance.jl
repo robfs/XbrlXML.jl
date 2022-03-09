@@ -5,7 +5,12 @@ include("transformation.jl")
 
 using ..EzXML, ..Cache, ..Taxonomy, Dates
 
-export XbrlInstance, parse_instance
+export XbrlInstance, ExplicitMember, Footnote
+export NumericFact, TextFact, AbstractFact
+export InstantContext, ForeverContext, TimeFrameContext, AbstractContext
+export SimpleUnit, DivideUnit, AbstractUnit
+export parse_instance, parse_instance_locally
+export parse_xbrl, parse_ixbrl, parse_xbrl_url, parse_ixbrl_url
 
 NAME_SPACES = [
     "xsd" => "http://www.w3.org/2001/XMLSchema",
@@ -20,14 +25,11 @@ function node_get(node::EzXML.Node, key, default)
     haskey(node, key) && return node[key]
     return default
 end
+
 struct ExplicitMember
     dimension::Concept
     member::Concept
 end
-
-Base.show(io::IO, m::ExplicitMember) = print(
-    io, "$(m.member.name) on dimension $(m.dimension.name)"
-)
 
 abstract type AbstractContext end
 
@@ -47,10 +49,6 @@ mutable struct InstantContext <: AbstractContext
 
 end
 
-Base.show(io::IO, c::InstantContext) = print(
-    io, "$(c.instant_date) $(length(c.segments)) dimension"
-)
-
 mutable struct TimeFrameContext <: AbstractContext
     xml_id::AbstractString
     entity::AbstractString
@@ -67,10 +65,6 @@ mutable struct TimeFrameContext <: AbstractContext
     )
 end
 
-Base.show(io::IO, c::TimeFrameContext) = print(
-    io, "$(c.start_date) to $(c.end_date) $(length(c.segments)) dimension"
-)
-
 mutable struct ForeverContext <: AbstractContext
     xml_id::AbstractString
     entity::AbstractString
@@ -86,27 +80,18 @@ struct SimpleUnit <: AbstractUnit
     unit::AbstractString
 end
 
-Base.show(io::IO, u::SimpleUnit) = print(io, self.unit)
-
 struct DivideUnit <: AbstractUnit
     unit_id::AbstractString
     numerator::AbstractString
     denominator::AbstractString
 end
 
-Base.show(io::IO, u::DivideUnit) = print(io, u.numerator, "/", u.denominator)
-
 struct Footnote
     content::AbstractString
     lang::AbstractString
 end
 
-
 abstract type AbstractFact end
-
-Base.show(io::IO, f::AbstractFact) = print(
-    io, f.concept.name, ": ", f.value
-)
 
 struct NumericFact <: AbstractFact
     concept::Concept
@@ -138,6 +123,20 @@ struct XbrlInstance
     unit_map::Dict
 end
 
+Base.show(io::IO, m::ExplicitMember) = print(
+    io, "$(m.member.name) on dimension $(m.dimension.name)"
+)
+Base.show(io::IO, c::InstantContext) = print(
+    io, "$(c.instant_date) $(length(c.segments)) dimension"
+)
+Base.show(io::IO, c::TimeFrameContext) = print(
+    io, "$(c.start_date) to $(c.end_date) $(length(c.segments)) dimension"
+)
+Base.show(io::IO, u::SimpleUnit) = print(io, self.unit)
+Base.show(io::IO, u::DivideUnit) = print(io, u.numerator, "/", u.denominator)
+Base.show(io::IO, f::AbstractFact) = print(
+    io, f.concept.name, ": ", f.value
+)
 Base.show(io::IO, i::XbrlInstance) = print(
     io,
     split(i.instance_url, Base.Filesystem.path_separator)[end],

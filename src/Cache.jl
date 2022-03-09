@@ -3,7 +3,8 @@ module Cache
 using Downloads
 using ZipFile
 
-export HttpCache, cache_file
+export HttpCache
+export cache_file, purge_file, url_to_path, cache_edgar_enclosure, find_entry_file
 
 mutable struct HttpCache
     cache_dir::AbstractString
