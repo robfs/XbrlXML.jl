@@ -22,13 +22,13 @@ const NAME_SPACES = [
 abstract type AbstractArcElement end
 
 mutable struct Locator
-    href::AbstractString
-    name::AbstractString
-    concept_id::AbstractString
+    href::String
+    name::String
+    concept_id::String
     parents::Vector{Locator}
     children::Vector{AbstractArcElement}
 
-    Locator(href::AbstractString, name::AbstractString) = new(
+    Locator(href, name) = new(
         href,
         name,
         split(href, "#")[2],
@@ -40,17 +40,17 @@ end
 struct RelationArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
-    arcrole::AbstractString
+    arcrole::String
     order::Union{Integer,Nothing}
 end
 
 struct DefinitionArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
-    arcrole::AbstractString
-    order::Union{Integer,Nothing}
+    arcrole::String
+    order::Union{Int,Nothing}
     closed::Union{Bool, Nothing}
-    context_element::Union{AbstractString, Nothing}
+    context_element::Union{String, Nothing}
 
     DefinitionArc(
         from_locator::Locator,
@@ -66,9 +66,9 @@ end
 struct CalculationArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
-    arcrole::AbstractString
-    order::Union{Integer,Nothing}
-    weight::Union{Real,Nothing}
+    arcrole::String
+    order::Union{Int,Nothing}
+    weight::Union{Float64,Nothing}
 
     CalculationArc(
         from_locator::Locator,
@@ -82,10 +82,10 @@ end
 struct PresentationArc <: AbstractArcElement
     from_locator::Locator
     to_locator::Locator
-    arcrole::AbstractString
-    order::Union{Integer,Nothing}
-    priority::Union{Integer,Nothing}
-    preferred_label::Union{AbstractString, Nothing}
+    arcrole::String
+    order::Union{Int,Nothing}
+    priority::Union{Int,Nothing}
+    preferred_label::Union{String, Nothing}
 
     PresentationArc(
         from_locator::Locator,
@@ -103,28 +103,21 @@ struct PresentationArc <: AbstractArcElement
 end
 
 struct Label
-    label::AbstractString
-    label_type::AbstractString
-    language::AbstractString
-    text::Union{AbstractString, Nothing}
+    label::String
+    label_type::String
+    language::String
+    text::Union{String, Nothing}
 
-    Label(
-        label::AbstractString,
-        label_type::AbstractString,
-        language::AbstractString,
-        text::Union{AbstractString,Nothing}
-    ) = new(
-        label,
-        label_type,
-        language,
+    Label(label, label_type, language, text::Union{AbstractString,Nothing}) = new(
+        label, label_type, language,
         text isa Nothing ? text : strip(text)
     )
 end
 
 struct LabelArc <: AbstractArcElement
     from_locator::Locator
-    arcrole::AbstractString
-    order::Union{Integer,Nothing}
+    arcrole::String
+    order::Union{Int,Nothing}
     labels::Vector{Label}
 
     LabelArc(
@@ -135,8 +128,8 @@ struct LabelArc <: AbstractArcElement
 end
 
 struct ExtendedLink
-    role::AbstractString
-    elr_id::Union{AbstractString, Nothing}
+    role::String
+    elr_id::Union{String, Nothing}
     root_locators::Vector{Locator}
 end
 
@@ -145,8 +138,8 @@ struct Linkbase
     type::LinkbaseType
 end
 
-function get_type_from_role(role::AbstractString)::Union{LinkbaseType, Nothing}
-    d::Dict{AbstractString, LinkbaseType} = Dict([
+function get_type_from_role(role)::Union{LinkbaseType, Nothing}
+    d::Dict{String, LinkbaseType} = Dict([
         "http://www.xbrl.org/2003/role/definitionLinkbaseRef" => DEFINITION,
         "http://www.xbrl.org/2003/role/calculationLinkbaseRef" => CALCULATION,
         "http://www.xbrl.org/2003/role/presentationLinkbaseRef" => PRESENTATION,
@@ -155,7 +148,7 @@ function get_type_from_role(role::AbstractString)::Union{LinkbaseType, Nothing}
     return get(d, role, nothing)
 end
 
-function guess_linkbase_role(href::AbstractString)::Union{LinkbaseType, Nothing}
+function guess_linkbase_role(href)::Union{LinkbaseType, Nothing}
     if occursin("_def", href)
         return DEFINITION
     elseif occursin("_cal", href)
@@ -232,7 +225,7 @@ function to_dict(arc::PresentationArc)::Dict{String, Any}
     return Dict(ps)
 end
 
-function to_dict(arc::LabelArc)::Dict{AbstractString, Any}
+function to_dict(arc::LabelArc)::Dict{String, Any}
     ps::Vector{Pair{AbstractString, Union{AbstractString, nothing}}} = []
     for l in arc.labels
         push!(ps, l.label_type => l.text)
@@ -267,7 +260,7 @@ function to_simple_dict(linkbase::Linkbase)::Dict{String, Vector{Dict{String, An
     return Dict(p)
 end
 
-function parselinkbase_url(linkbase_url::AbstractString, linkbase_type::LinkbaseType, cache::HttpCache)::Linkbase
+function parselinkbase_url(linkbase_url, linkbase_type::LinkbaseType, cache::HttpCache)::Linkbase
 
     if startswith(linkbase_url, "http")
         linkbase_path = cachefile(cache, linkbase_url)
@@ -278,7 +271,7 @@ function parselinkbase_url(linkbase_url::AbstractString, linkbase_type::Linkbase
 
 end
 
-function parselinkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseType, linkbase_url::Union{AbstractString,Nothing}=nothing):: Linkbase
+function parselinkbase(linkbase_path, linkbase_type::LinkbaseType, linkbase_url::Union{AbstractString,Nothing}=nothing):: Linkbase
 
     startswith(linkbase_path, "http") && throw("This function only parses locally saved linkbases.")
 
