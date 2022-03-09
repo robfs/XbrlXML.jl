@@ -1,8 +1,4 @@
 using Documenter
-
-using Pkg
-Pkg.activate("..")
-
 using XbrlXML
 
 makedocs(
