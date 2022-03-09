@@ -8,16 +8,17 @@ using ..EzXML, ..Cache, ..Linkbases
 
 import HTTP: unescapeuri
 
-export Concept, TaxonomySchema, parse_taxonomy, parse_common_taxonomy, parse_taxonomy_url, get_taxonomy
+export Concept, TaxonomySchema, ExtendedLinkRole
+export parsetaxonomy, parsecommontaxonomy, parsetaxonomy_url, gettaxonomy
 
-NAME_SPACES = Dict([
+const NAME_SPACES = [
     "xsd" => "http://www.w3.org/2001/XMLSchema",
     "link" => "http://www.xbrl.org/2003/linkbase",
     "xlink" => "http://www.w3.org/1999/xlink",
     "xbrldt" => "http://xbrl.org/2005/xbrldt"
-])
+]
 
-NS_SCHEMA_MAP = Dict([
+const NS_SCHEMA_MAP = Dict([
         "http://fasb.org/srt/2018-01-31" => "http://xbrl.fasb.org/srt/2018/elts/srt-2018-01-31.xsd",
         "http://fasb.org/srt/2019-01-31" => "http://xbrl.fasb.org/srt/2019/elts/srt-2019-01-31.xsd",
         "http://fasb.org/srt/2020-01-31" => "http://xbrl.fasb.org/srt/2020/elts/srt-2020-01-31.xsd",
@@ -57,16 +58,16 @@ NS_SCHEMA_MAP = Dict([
     ])
 
 mutable struct Concept
-    xml_id::AbstractString
-    schema_url::Union{AbstractString,Nothing}
-    name::AbstractString
+    xml_id::String
+    schema_url::Union{String,Nothing}
+    name::String
     type::Union{String,Nothing}
-    substitution_group::Union{AbstractString, Nothing}
-    concept_type::Union{AbstractString, Nothing}
+    substitution_group::Union{String, Nothing}
+    concept_type::Union{String, Nothing}
     abstract::Union{Bool, Nothing}
     nillable::Union{Bool, Nothing}
-    period_type::Union{AbstractString, Nothing}
-    balance::Union{AbstractString, Nothing}
+    period_type::Union{String, Nothing}
+    balance::Union{String, Nothing}
     labels::Vector{Label}
 
     Concept(role_id::AbstractString, uri::Union{AbstractString,Nothing}, definition::AbstractString) = new(
@@ -75,9 +76,9 @@ mutable struct Concept
 end
 
 mutable struct ExtendedLinkRole
-    xml_id::AbstractString
-    uri::AbstractString
-    definition::AbstractString
+    xml_id::String
+    uri::String
+    definition::String
     definition_link::Union{ExtendedLink, Nothing}
     presentation_link::Union{ExtendedLink, Nothing}
     calculation_link::Union{ExtendedLink, Nothing}
@@ -88,47 +89,50 @@ mutable struct ExtendedLinkRole
 end
 
 mutable struct TaxonomySchema
-    schema_url::AbstractString
-    namespace::AbstractString
+    schema_url::String
+    namespace::String
     imports::Vector{TaxonomySchema}
     link_roles::Vector{ExtendedLinkRole}
     lab_linkbases::Vector{Linkbase}
     def_linkbases::Vector{Linkbase}
     cal_linkbases::Vector{Linkbase}
     pre_linkbases::Vector{Linkbase}
-    concepts::Dict{AbstractString, Concept}
-    name_id_map::Dict{AbstractString, AbstractString}
+    concepts::Dict{String, Concept}
+    name_id_map::Dict{String, String}
 
     TaxonomySchema(schema_url::AbstractString, namespace::AbstractString) = new(
         schema_url, namespace, [], [], [], [], [], [], Dict(), Dict()
     )
 end
 
-function get_taxonomy(schema::TaxonomySchema, url::AbstractString)::Union{TaxonomySchema, Nothing}
+function gettaxonomy(schema::TaxonomySchema, url)::Union{TaxonomySchema, Nothing}
     if compare_uri(schema.namespace, url) || compare_uri(schema.schema_url, url)
         return schema
     end
     for imported_tax in schema.imports
-        result::Union{TaxonomySchema, Nothing} = get_taxonomy(imported_tax, url)
+        result::Union{TaxonomySchema, Nothing} = gettaxonomy(imported_tax, url)
         !(result isa Nothing) && return result
     end
     return nothing
 end
 
-function parse_common_taxonomy(cache::HttpCache, namespace::AbstractString)::Union{TaxonomySchema, Nothing}
-    ns_map::Dict{String,String} = NS_SCHEMA_MAP
-    haskey(ns_map, namespace) && return parse_taxonomy_url(ns_map[namespace], cache)
+function parsecommontaxonomy(cache::HttpCache, namespace)::Union{TaxonomySchema, Nothing}
+    haskey(NS_SCHEMA_MAP, namespace) && return parsetaxonomy_url(NS_SCHEMA_MAP[namespace], cache)
     return nothing
 end
 
-@memoize LRU{Tuple{AbstractString, HttpCache}, TaxonomySchema}(maxsize=60) function parse_taxonomy_url(schema_url::AbstractString, cache::HttpCache)::TaxonomySchema
+@memoize LRU{Tuple{AbstractString, HttpCache}, TaxonomySchema}(maxsize=60) function parsetaxonomy_url(schema_url::AbstractString, cache::HttpCache)::TaxonomySchema
     !startswith(schema_url, "http") && throw("This function only parses remotely saved taxonomies.")
-    schema_path::AbstractString = cache_file(cache, schema_url)
-    return parse_taxonomy(schema_path, cache, schema_url)
+    schema_path::AbstractString = cachefile(cache, schema_url)
+    return parsetaxonomy(schema_path, cache, schema_url)
 end
 
+"""
+    parsetaxonomy(schema_path, cache::HttpCache, schema_url=nothing)::TaxonomySchema
 
-function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union{String,Nothing}=nothing)::TaxonomySchema
+Parse a given taxonomy
+"""
+function parsetaxonomy(schema_path, cache::HttpCache, schema_url=nothing)::TaxonomySchema
 
     # Implement errors
     ns_schema_map::Dict{String,String} = NS_SCHEMA_MAP
@@ -143,13 +147,13 @@ function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union
     for import_element in import_elements
         import_uri = import_element["schemaLocation"]
         if startswith(import_uri, "http")
-            push!(taxonomy.imports, parse_taxonomy_url(import_uri, cache))
+            push!(taxonomy.imports, parsetaxonomy_url(import_uri, cache))
         elseif !(schema_url isa Nothing)
             import_url = resolve_uri(schema_url, import_uri)
-            push!(taxonomy.imports, parse_taxonomy_url(import_url, cache))
+            push!(taxonomy.imports, parsetaxonomy_url(import_url, cache))
         else
             import_path = resolve_uri(schema_path, import_uri)
-            push!(taxonomy.imports, parse_taxonomy(import_path, cache))
+            push!(taxonomy.imports, parsetaxonomy(import_path, cache))
         end
     end
 
@@ -185,19 +189,19 @@ function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union
         linkbase_type = role isa Nothing ? Linkbases.guess_linkbase_role(linkbase_uri) : Linkbases.get_type_from_role(role)
 
         if startswith(linkbase_uri, "http")
-            linkbase = parse_linkbase_url(linkbase_uri, linkbase_type, cache)
+            linkbase = parselinkbase_url(linkbase_uri, linkbase_type, cache)
         elseif !(schema_url isa Nothing)
             linkbase_url = resolve_uri(schema_url, linkbase_uri)
-            linkbase = parse_linkbase_url(linkbase_url, linkbase_type, cache)
+            linkbase = parselinkbase_url(linkbase_url, linkbase_type, cache)
         else
             linkbase_path = resolve_uri(schema_path, linkbase_uri)
-            linkbase = parse_linkbase(linkbase_path, linkbase_type)
+            linkbase = parselinkbase(linkbase_path, linkbase_type)
         end
 
-        linkbase_type == DEFINITION && push!(taxonomy.def_linkbases, linkbase)
-        linkbase_type == CALCULATION && push!(taxonomy.cal_linkbases, linkbase)
-        linkbase_type == PRESENTATION && push!(taxonomy.pre_linkbases, linkbase)
-        linkbase_type == LABEL && push!(taxonomy.lab_linkbases, linkbase)
+        linkbase_type == Linkbases.DEFINITION && push!(taxonomy.def_linkbases, linkbase)
+        linkbase_type == Linkbases.CALCULATION && push!(taxonomy.cal_linkbases, linkbase)
+        linkbase_type == Linkbases.PRESENTATION && push!(taxonomy.pre_linkbases, linkbase)
+        linkbase_type == Linkbases.LABEL && push!(taxonomy.lab_linkbases, linkbase)
 
     end
 
@@ -232,11 +236,11 @@ function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union
         for extended_link in label_linkbase.extended_links
             for root_locator in extended_link.root_locators
                 (schema_url, concept_id) = split(unescapeuri(root_locator.href), "#")
-                c_taxonomy::Union{TaxonomySchema,Nothing} = get_taxonomy(taxonomy, schema_url)
+                c_taxonomy::Union{TaxonomySchema,Nothing} = gettaxonomy(taxonomy, schema_url)
 
                 if c_taxonomy isa Nothing
                     if schema_url in values(ns_schema_map)
-                        c_taxonomy = parse_taxonomy_url(schema_url, cache)
+                        c_taxonomy = parsetaxonomy_url(schema_url, cache)
                         push!(taxonomy.imports, c_taxonomy)
                     else
                         continue
@@ -257,5 +261,8 @@ function parse_taxonomy(schema_path::String, cache::HttpCache, schema_url::Union
     return taxonomy
 end
 
+Base.show(io::IO, c::Concept) = print(io, c.name)
+Base.show(io::IO, elr::ExtendedLinkRole) = print(io, elr.definition)
+Base.show(io::IO, ts::TaxonomySchema) = print(io, ts.namespace)
 
 end # Module
