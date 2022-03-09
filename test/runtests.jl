@@ -14,10 +14,10 @@ using Test
 
         rm(expectedpath; force=true)
 
-        @test cache_file(cache, testurl) == expectedpath
+        @test cachefile(cache, testurl) == expectedpath
         @test isfile(expectedpath)
 
-        @test purge_file(cache, testurl)
+        @test purgefile(cache, testurl)
         @test !(isfile(expectedpath))
 
         rm(cachedir; recursive=true)
@@ -29,7 +29,7 @@ using Test
         @testset "Local Linkbases" begin
 
             linkbasepath::String = abspath("./data/example-lab.xml")
-            linkbase::XbrlXML.Linkbase = parse_linkbase(linkbasepath, XbrlXML.Linkbases.LABEL)
+            linkbase::XbrlXML.Linkbase = parselinkbase(linkbasepath, XbrlXML.Linkbases.LABEL)
 
             rootlocator::XbrlXML.Locator = linkbase.extended_links[1].root_locators[1]
 
@@ -44,7 +44,7 @@ using Test
 
 
             linkbasepath = abspath("./data/example-cal.xml")
-            linkbase = parse_linkbase(linkbasepath, XbrlXML.Linkbases.CALCULATION)
+            linkbase = parselinkbase(linkbasepath, XbrlXML.Linkbases.CALCULATION)
 
             assetslocator::XbrlXML.Locator = linkbase.extended_links[1].root_locators[1]
 
@@ -60,10 +60,10 @@ using Test
 
                 cachedir::String = abspath("./cache/")
                 cache::HttpCache = HttpCache(cachedir)
-                cache.headers = Dict("User-Agent" => "Test test@test.com")
+                cacheheader!(cache, "User-Agent" => "Test test@test.com")
 
                 linkbaseurl::String = "https://www.esma.europa.eu/taxonomy/2019-03-27/esef_cor-lab-de.xml"
-                linkbase = parse_linkbase_url(linkbaseurl, XbrlXML.Linkbases.LABEL, cache)
+                linkbase = parselinkbase_url(linkbaseurl, XbrlXML.Linkbases.LABEL, cache)
 
                 @test length(linkbase.extended_links) == 1
                 @test length(linkbase.extended_links[1].root_locators) == 5028
@@ -87,8 +87,8 @@ using Test
             cache::HttpCache = HttpCache(cachedir)
 
             extensionschemapath::String = abspath("./data/example.xsd")
-            tax::XbrlXML.TaxonomySchema = parse_taxonomy(extensionschemapath, cache)
-            srttax::XbrlXML.TaxonomySchema = get_taxonomy(tax, "http://fasb.org/srt/2020-01-31")
+            tax::XbrlXML.TaxonomySchema = parsetaxonomy(extensionschemapath, cache)
+            srttax::XbrlXML.TaxonomySchema = gettaxonomy(tax, "http://fasb.org/srt/2020-01-31")
 
             @test length(srttax.concepts) == 489
             @test length(tax.concepts["example_Assets"].labels) == 2
@@ -102,14 +102,14 @@ using Test
                 cachedir::String = abspath("./cache/")
                 cache::HttpCache = HttpCache(cachedir)
 
-                cache.headers = Dict("User-Agent" => "Test test@test.com")
+                cacheheader!(cache, "User-Agent" => "Test test@test.com")
 
                 schemaurl::String = "https://www.sec.gov/Archives/edgar/data/320193/000032019321000010/aapl-20201226.xsd"
-                tax = parse_taxonomy_url(schemaurl, cache)
+                tax = parsetaxonomy_url(schemaurl, cache)
 
                 @test length(tax.concepts) == 65
 
-                usgaaptax::XbrlXML.TaxonomySchema = get_taxonomy(tax, "http://fasb.org/us-gaap/2020-01-31")
+                usgaaptax::XbrlXML.TaxonomySchema = gettaxonomy(tax, "http://fasb.org/us-gaap/2020-01-31")
 
                 @test length(usgaaptax.concepts) == 17281
                 @test length(tax.concepts["aapl_MacMember"].labels) == 3
@@ -256,14 +256,14 @@ using Test
             cache::HttpCache = HttpCache(cachedir)
 
             instancedocurl::String = "./data/example.xml"
-            inst::XbrlInstance = parse_xbrl(instancedocurl, cache)
+            inst::XbrlInstance = parsexbrl(instancedocurl, cache)
 
-            @test length(inst.facts) == 1
+            @test length(facts(inst)) == 1
 
             instancedocurl = "./data/example.html"
-            inst = parse_ixbrl(instancedocurl, cache)
+            inst = parseixbrl(instancedocurl, cache)
 
-            @test length(inst.facts) == 3
+            @test length(facts(inst)) == 3
 
         end
 
@@ -274,10 +274,10 @@ using Test
                 cachedir::String = abspath("./cache/")
                 cache::HttpCache = HttpCache(cachedir)
 
-                cache.headers = Dict("User-Agent" => "Test test@test.com")
+                cacheheader!(cache, "User-Agent" => "Test test@test.com")
 
                 url::String = "https://www.sec.gov/Archives/edgar/data/320193/000032019321000010/aapl-20201226.htm"
-                inst = parse_ixbrl_url(url, cache)
+                inst = parseixbrl_url(url, cache)
 
                 @test length(inst.context_map) == 207
                 @test length(inst.unit_map) == 9
