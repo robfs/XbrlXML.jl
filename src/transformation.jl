@@ -1,5 +1,7 @@
 using Dates
 
+_WARNED_TRANSFORMERS = []
+
 include("text2num.jl")
 
 function transform_ixt(value::AbstractString, transform_format::AbstractString)::AbstractString
@@ -12,7 +14,7 @@ function transform_ixt(value::AbstractString, transform_format::AbstractString):
     transform_format == "zerodash" && return "0"
     transform_format == "fixedzero" && return "0"
     transform_format == "fixedtrue" && return "true"
-    transform_format == "nocontent" && ""
+    transform_format == "nocontent" && return ""
 
     if startswith(transform_format, "date")
         value = replace(value, r"[,\-\._/]" => " ")
@@ -28,29 +30,29 @@ function transform_ixt(value::AbstractString, transform_format::AbstractString):
             return Dates.format(Date(value, dateformat"d m y"), "Y-mm-dd")
         elseif transform_format == "datedaymonthyearen"
             monthformat = length(seg[2]) == 3 ? "u" : "U"
-            return Dates.format(Date(value, dateformat"d $(monthformat) y"), "Y-mm-dd")
+            return Dates.format(Date(value, "d $(monthformat) y"), "Y-mm-dd")
         elseif transform_format == "datemonthday"
-            return Dates.format(Date(value, "m d"), "--mm-dd")
+            return Dates.format(Date(value, dateformat"m d"), "--mm-dd")
         elseif transform_format == "datemonthdayen"
             monthformat = length(seg[1]) == 3 ? "u" : "U"
             return Dates.format(Date(value, "$(monthformat) d"), "--mm-dd")
         elseif transform_format == "datemonthdayyear"
-            return Dates.format(Date(value, "m d y"), "Y-mm-dd")
+            return Dates.format(Date(value, dateformat"m d y"), "Y-mm-dd")
         elseif transform_format == "datemonthdayyearen" || transform_format == "datemonthnamedayyearen"
             monthformat = length(seg[1]) == 3 ? "u" : "U"
             return Dates.format(Date(value, "$(monthformat) d y"), "Y-mm-dd")
         elseif transform_format == "dateyearmonthday"
-            return Dates.format(Date(value, "y m d"), "Y-mm-dd")
+            return Dates.format(Date(value, dateformat"y m d"), "Y-mm-dd")
         elseif transform_format == "dateyearmonthdayen"
             monthformat = length(seg[2]) == 3 ? "u" : "U"
             return Dates.format(Date(value, "y $(monthformat) d"), "Y-mm-dd")
         elseif transform_format == "datemonthyear"
-            return Dates.format(Date(value, "m y"), "Y-mm")
+            return Dates.format(Date(value, dateformat"m y"), "Y-mm")
         elseif transform_format == "datemonthyearen"
             monthformat = length(seg[1]) == 3 ? "u" : "U"
             return Dates.format(Date(value, "$(monthformat) y"), "Y-mm")
         elseif transform_format == "dateyearmonth"
-            return Dates.format(Date(value, "y m"), "Y-mm")
+            return Dates.format(Date(value, dateformat"y m"), "Y-mm")
         elseif transform_format == "dateyearmonthen"
             monthformat = length(seg[2]) == 3 ? "u" : "U"
             return Dates.format(Date(value, "y $(monthformat)"), "Y-mm")
@@ -71,7 +73,7 @@ end
 
 function transform_ixt_sec(value::AbstractString, transform_format::AbstractString)::AbstractString
 
-    value = replace(strip(lowercase(value)), "\xa0" => " ")
+    value = replace(strip(lowercase(value)), '\ua0' => " ")
     value = replace(value, r"[,\-\._/]" => " ")
     value = replace(value, r"\s{2,}" => " ")
 
@@ -107,7 +109,12 @@ function transform_ixt_sec(value::AbstractString, transform_format::AbstractStri
         return "P$(years)Y$(months)M$(days)D"
     end
 
-    @warn "The transformation rule ixt-sec:$(transform_format) is currently not supported by this parser."
+    if !(transform_format in _WARNED_TRANSFORMERS)
+
+        @info "The transformation rule ixt-sec:$(transform_format) is currently not supported by this parser."
+        push!(_WARNED_TRANSFORMERS, transform_format)
+
+    end
 
     return value
 end
