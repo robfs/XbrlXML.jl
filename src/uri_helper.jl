@@ -23,16 +23,20 @@ function resolve_uri(dir_uri::AbstractString, relative_uri::AbstractString)::Abs
     if occursin(".", uri_parts[end])
         dir_uri = join(uri_parts[1:end-1], "/")
     end
-    if endswith(dir_uri, "/")
+    if !endswith(dir_uri, "/")
         dir_uri *= "/"
     end
 
-    absolute_uri = dir_uri * "/" * relative_uri
+    absolute_uri = dir_uri * relative_uri
     if !startswith(dir_uri, "http")
         absolute_uri = normpath(absolute_uri)
     end
 
-    return replace(absolute_uri, r"/\w+/\.\./" => "/")
+    while occursin("..", absolute_uri)
+        absolute_uri = replace(absolute_uri, r"/\w+/\.\./" => "/")
+    end
+
+    return absolute_uri
 end
 
 
@@ -44,8 +48,8 @@ function compare_uri(uri1::AbstractString, uri2::AbstractString)::Bool
         uri2 = split(uri2, "://")[2]
     end
 
-    uri1_segments::Vector{UnitRange{Integer}} = findall(r"[\w']+", uri1)
-    uri2_segments::Vector{UnitRange{Integer}} = findall(r"[\w']+", uri2)
+    m1::Vector{AbstractString} = [m.match for m in collect(eachmatch(r"[\w']+", uri1))]
+    m2::Vector{AbstractString} = [m.match for m in collect(eachmatch(r"[\w']+", uri2))]
 
-    return uri1_segments == uri2_segments
+    return m1 == m2
 end
