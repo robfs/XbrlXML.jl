@@ -58,16 +58,16 @@ const NS_SCHEMA_MAP = Dict([
     ])
 
 mutable struct Concept
-    xml_id::AbstractString
-    schema_url::Union{AbstractString,Nothing}
-    name::AbstractString
+    xml_id::String
+    schema_url::Union{String,Nothing}
+    name::String
     type::Union{String,Nothing}
-    substitution_group::Union{AbstractString, Nothing}
-    concept_type::Union{AbstractString, Nothing}
+    substitution_group::Union{String, Nothing}
+    concept_type::Union{String, Nothing}
     abstract::Union{Bool, Nothing}
     nillable::Union{Bool, Nothing}
-    period_type::Union{AbstractString, Nothing}
-    balance::Union{AbstractString, Nothing}
+    period_type::Union{String, Nothing}
+    balance::Union{String, Nothing}
     labels::Vector{Label}
 
     Concept(role_id::AbstractString, uri::Union{AbstractString,Nothing}, definition::AbstractString) = new(
@@ -76,9 +76,9 @@ mutable struct Concept
 end
 
 mutable struct ExtendedLinkRole
-    xml_id::AbstractString
-    uri::AbstractString
-    definition::AbstractString
+    xml_id::String
+    uri::String
+    definition::String
     definition_link::Union{ExtendedLink, Nothing}
     presentation_link::Union{ExtendedLink, Nothing}
     calculation_link::Union{ExtendedLink, Nothing}
@@ -89,23 +89,23 @@ mutable struct ExtendedLinkRole
 end
 
 mutable struct TaxonomySchema
-    schema_url::AbstractString
-    namespace::AbstractString
+    schema_url::String
+    namespace::String
     imports::Vector{TaxonomySchema}
     link_roles::Vector{ExtendedLinkRole}
     lab_linkbases::Vector{Linkbase}
     def_linkbases::Vector{Linkbase}
     cal_linkbases::Vector{Linkbase}
     pre_linkbases::Vector{Linkbase}
-    concepts::Dict{AbstractString, Concept}
-    name_id_map::Dict{AbstractString, AbstractString}
+    concepts::Dict{String, Concept}
+    name_id_map::Dict{String, String}
 
     TaxonomySchema(schema_url::AbstractString, namespace::AbstractString) = new(
         schema_url, namespace, [], [], [], [], [], [], Dict(), Dict()
     )
 end
 
-function gettaxonomy(schema::TaxonomySchema, url::AbstractString)::Union{TaxonomySchema, Nothing}
+function gettaxonomy(schema::TaxonomySchema, url)::Union{TaxonomySchema, Nothing}
     if compare_uri(schema.namespace, url) || compare_uri(schema.schema_url, url)
         return schema
     end
@@ -116,9 +116,8 @@ function gettaxonomy(schema::TaxonomySchema, url::AbstractString)::Union{Taxonom
     return nothing
 end
 
-function parsecommontaxonomy(cache::HttpCache, namespace::AbstractString)::Union{TaxonomySchema, Nothing}
-    ns_schema_map::Dict{String,String} = NS_SCHEMA_MAP
-    haskey(ns_schema_map, namespace) && return parsetaxonomy_url(ns_schema_map[namespace], cache)
+function parsecommontaxonomy(cache::HttpCache, namespace)::Union{TaxonomySchema, Nothing}
+    haskey(NS_SCHEMA_MAP, namespace) && return parsetaxonomy_url(NS_SCHEMA_MAP[namespace], cache)
     return nothing
 end
 
@@ -128,8 +127,12 @@ end
     return parsetaxonomy(schema_path, cache, schema_url)
 end
 
+"""
+    parsetaxonomy(schema_path, cache::HttpCache, schema_url=nothing)::TaxonomySchema
 
-function parsetaxonomy(schema_path::String, cache::HttpCache, schema_url::Union{String,Nothing}=nothing)::TaxonomySchema
+Parse a given taxonomy
+"""
+function parsetaxonomy(schema_path, cache::HttpCache, schema_url=nothing)::TaxonomySchema
 
     # Implement errors
     ns_schema_map::Dict{String,String} = NS_SCHEMA_MAP

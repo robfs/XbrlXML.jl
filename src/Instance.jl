@@ -35,61 +35,61 @@ end
 abstract type AbstractContext end
 
 mutable struct InstantContext <: AbstractContext
-    xml_id::AbstractString
-    entity::AbstractString
+    xml_id::String
+    entity::String
     segments::Vector{ExplicitMember}
     instant_date::Date
 
-    InstantContext(xml_id::AbstractString, entity::AbstractString, instant_date::AbstractString) = new(
+    InstantContext(xml_id, entity, instant_date) = new(
         xml_id, entity, [], Date(instant_date)
     )
 
-    InstantContext(xml_id::AbstractString, entity::AbstractString, instant_date::Date) = new(
+    InstantContext(xml_id, entity, instant_date::Date) = new(
         xml_id, entity, [], Date(instant_date)
     )
 
 end
 
 mutable struct TimeFrameContext <: AbstractContext
-    xml_id::AbstractString
-    entity::AbstractString
+    xml_id::String
+    entity::String
     segments::Vector{ExplicitMember}
     start_date::Date
     end_date::Date
 
-    TimeFrameContext(xml_id::AbstractString, entity::AbstractString, start_date::AbstractString, end_date::AbstractString) = new(
+    TimeFrameContext(xml_id, entity, start_date, end_date) = new(
         xml_id, entity, [], Date(start_date), Date(end_date)
     )
 
-    TimeFrameContext(xml_id::AbstractString, entity::AbstractString, start_date::Date, end_date::Date) = new(
+    TimeFrameContext(xml_id, entity, start_date::Date, end_date::Date) = new(
         xml_id, entity, [], start_date, end_date
     )
 end
 
 mutable struct ForeverContext <: AbstractContext
-    xml_id::AbstractString
-    entity::AbstractString
+    xml_id::String
+    entity::String
     segments::Vector{ExplicitMember}
 
-    ForeverContext(xml_id::AbstractString, entity::AbstractString) = new(xml_id, entity, [])
+    ForeverContext(xml_id, entity) = new(xml_id, entity, [])
 end
 
 abstract type AbstractUnit end
 
 struct SimpleUnit <: AbstractUnit
-    unit_id::AbstractString
-    unit::AbstractString
+    unit_id::String
+    unit::String
 end
 
 struct DivideUnit <: AbstractUnit
-    unit_id::AbstractString
-    numerator::AbstractString
-    denominator::AbstractString
+    unit_id::String
+    numerator::String
+    denominator::String
 end
 
 struct Footnote
-    content::AbstractString
-    lang::AbstractString
+    content::String
+    lang::String
 end
 
 abstract type AbstractFact end
@@ -97,7 +97,7 @@ abstract type AbstractFact end
 struct NumericFact <: AbstractFact
     concept::Concept
     context::AbstractContext
-    value::Union{Real,Nothing}
+    value::Union{Float64,Nothing}
     footnote::Union{Footnote,Nothing}
     unit::AbstractUnit
     decimals::Union{Int,Nothing}
@@ -110,14 +110,14 @@ end
 struct TextFact <: AbstractFact
     concept::Concept
     context::AbstractContext
-    value::AbstractString
+    value::String
     footnote::Union{Footnote,Nothing}
 
     TextFact(concept, context, value) = new(concept, context, value, nothing)
 end
 
 struct XbrlInstance
-    instance_url::AbstractString
+    instance_url::String
     taxonomy::TaxonomySchema
     facts::Vector{AbstractFact}
     context_map::Dict
@@ -125,6 +125,12 @@ struct XbrlInstance
 end
 
 facts(instance::XbrlInstance) = instance.facts
+
+function _trimmedfactvalue(fact::TextFact)
+    start::Int = startswith(fact.value, '\n') ? 2 : 1
+    length(fact.value) <= 30 && return fact.value[start:end]
+    return fact.value[start:27] * "..."
+end
 
 Base.show(io::IO, m::ExplicitMember) = print(
     io, "$(m.member.name) on dimension $(m.dimension.name)"
@@ -137,8 +143,11 @@ Base.show(io::IO, c::TimeFrameContext) = print(
 )
 Base.show(io::IO, u::SimpleUnit) = print(io, self.unit)
 Base.show(io::IO, u::DivideUnit) = print(io, u.numerator, "/", u.denominator)
-Base.show(io::IO, f::AbstractFact) = print(
+Base.show(io::IO, f::NumericFact) = print(
     io, f.concept.name, ": ", f.value
+)
+Base.show(io::IO, f::TextFact) = print(
+    io, f.concept.name, ": ", _trimmedfactvalue(f)
 )
 Base.show(io::IO, i::XbrlInstance) = print(
     io,
@@ -146,12 +155,12 @@ Base.show(io::IO, i::XbrlInstance) = print(
     " with ", length(i.facts), " facts"
 )
 
-function parsexbrl_url(instance_url::AbstractString, cache::HttpCache)::XbrlInstance
-    instance_path::AbstractString = cachefile(cache, instance_url)
+function parsexbrl_url(instance_url, cache::HttpCache)::XbrlInstance
+    instance_path::String = cachefile(cache, instance_url)
     return parsexbrl(instance_path, cache, instance_url)
 end
 
-function parsexbrl(instance_path::AbstractString, cache::HttpCache, instance_url::Union{AbstractString,Nothing} = nothing)::XbrlInstance
+function parsexbrl(instance_path, cache::HttpCache, instance_url::Union{AbstractString,Nothing} = nothing)::XbrlInstance
     doc::EzXML.Document = readxml(instance_path)
     root::EzXML.Node = doc.root
 
@@ -215,12 +224,12 @@ function parsexbrl(instance_path::AbstractString, cache::HttpCache, instance_url
 
 end
 
-function parseixbrl_url(instance_url::AbstractString, cache::HttpCache)::XbrlInstance
+function parseixbrl_url(instance_url, cache::HttpCache)::XbrlInstance
     instance_path::AbstractString = cachefile(cache, instance_url)
     return parseixbrl(instance_path, cache, instance_url)
 end
 
-function parseixbrl(instance_path::AbstractString, cache::HttpCache, instance_url::Union{AbstractString,Nothing} = nothing)::XbrlInstance
+function parseixbrl(instance_path, cache::HttpCache, instance_url::Union{AbstractString,Nothing} = nothing)::XbrlInstance
 
     doc::EzXML.Document = readxml(instance_path)
     root::EzXML.Node = doc.root
@@ -282,9 +291,9 @@ function parseixbrl(instance_path::AbstractString, cache::HttpCache, instance_ur
 end
 
 
-function _extract_non_numeric_value(fact_elem::EzXML.Node)::AbstractString
+function _extract_non_numeric_value(fact_elem::EzXML.Node)::String
 
-    fact_value::AbstractString = fact_elem.content
+    fact_value::String = fact_elem.content
 
     for child in eachelement(fact_elem)
         fact_value *= _extract_text_value(child)
@@ -302,7 +311,7 @@ function _extract_non_numeric_value(fact_elem::EzXML.Node)::AbstractString
     return fact_value
 end
 
-function _extract_non_fraction_value(fact_elem::EzXML.Node)::Union{Real,Nothing}
+function _extract_non_fraction_value(fact_elem::EzXML.Node)::Union{Float64,Nothing}
 
     nodeget(fact_elem, "xsi:nil", "false") == "true" && return nothing
 
@@ -326,7 +335,7 @@ function _extract_non_fraction_value(fact_elem::EzXML.Node)::Union{Real,Nothing}
         end
     end
 
-    scaled_value::Real = parse(Float64, fact_value) * (10.0 ^ value_scale)
+    scaled_value::Float64 = parse(Float64, fact_value) * (10.0 ^ value_scale)
 
     if abs(scaled_value) > 1e6
         scaled_value = round(scaled_value)
@@ -339,8 +348,8 @@ function _extract_non_fraction_value(fact_elem::EzXML.Node)::Union{Real,Nothing}
 end
 
 
-function _extract_text_value(element::EzXML.Node)::AbstractString
-    text::AbstractString = element.content
+function _extract_text_value(element::EzXML.Node)::String
+    text::String = element.content
     for child in eachelement(element)
         text *= _extract_text_value(child)
     end
@@ -350,13 +359,13 @@ end
 
 function _parse_context_elements(
     context_elements::Vector{EzXML.Node},
-    ns_map::Dict{AbstractString,AbstractString},
+    ns_map::Dict,
     taxonomy::TaxonomySchema,
     cache::HttpCache,
-)::Dict{AbstractString,AbstractContext}
-    context_dict::Dict{AbstractString,AbstractContext} = Dict()
+)::Dict{String,AbstractContext}
+    context_dict::Dict{String,AbstractContext} = Dict()
     for context_elem in context_elements
-        context_id::AbstractString = context_elem["id"]
+        context_id::String = context_elem["id"]
         entity::AbstractString = strip(findfirst("xbrli:entity/xbrli:identifier", context_elem, NAME_SPACES).content)
         instant_date::Union{EzXML.Node,Nothing} = findfirst("xbrli:period/xbrli:instant", context_elem, NAME_SPACES)
         start_date::Union{EzXML.Node,Nothing} = findfirst("xbrli:period/xbrli:startDate", context_elem, NAME_SPACES)
@@ -400,7 +409,7 @@ function _parse_context_elements(
 
 end
 
-function _update_ns_map!(ns_map::Dict{AbstractString,AbstractString}, new_ns_map::Vector{Pair{T,T}}) where {T <: AbstractString}
+function _update_ns_map!(ns_map::Dict, new_ns_map::Vector{Pair{T,T}}) where {T <: AbstractString}
     for (prefix, ns) in new_ns_map
         if !haskey(ns_map, prefix) && prefix != ""
             ns_map[prefix] = ns
@@ -408,10 +417,10 @@ function _update_ns_map!(ns_map::Dict{AbstractString,AbstractString}, new_ns_map
     end
 end
 
-function _parse_unit_elements(unit_elements::Vector{EzXML.Node})::Dict{AbstractString,AbstractUnit}
-    unit_dict::Dict{AbstractString,AbstractUnit} = Dict()
+function _parse_unit_elements(unit_elements::Vector{EzXML.Node})::Dict{String,AbstractUnit}
+    unit_dict::Dict{String,AbstractUnit} = Dict()
     for unit_elem in unit_elements
-        unit_id::AbstractString = unit_elem["id"]
+        unit_id::String = unit_elem["id"]
 
         simple_unit::Union{EzXML.Node,Nothing} = findfirst("xbrli:measure", unit_elem, NAME_SPACES)
         divide::Union{EzXML.Node,Nothing} = findfirst("xbrli:divide", unit_elem, NAME_SPACES)
@@ -430,7 +439,7 @@ function _parse_unit_elements(unit_elements::Vector{EzXML.Node})::Dict{AbstractS
     return unit_dict
 end
 
-function _load_common_taxonomy(cache::HttpCache, namespace::AbstractString, taxonomy::TaxonomySchema)::TaxonomySchema
+function _load_common_taxonomy(cache::HttpCache, namespace, taxonomy::TaxonomySchema)::TaxonomySchema
     tax = parsecommontaxonomy(cache, namespace)
     tax isa Nothing && throw(error("Taxonomy not found"))
     push!(taxonomy.imports, tax)
