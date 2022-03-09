@@ -94,7 +94,7 @@ struct DivideUnit <: AbstractUnit
     denominator::AbstractString
 end
 
-Base.show(io::IO, u::SimpleUnit) = print(io, u.numerator, "/", u.denominator)
+Base.show(io::IO, u::DivideUnit) = print(io, u.numerator, "/", u.denominator)
 
 struct Footnote
     content::AbstractString
