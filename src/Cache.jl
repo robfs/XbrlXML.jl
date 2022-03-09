@@ -4,22 +4,41 @@ using Downloads
 using ZipFile
 
 export HttpCache
-export cache_file, purge_file, url_to_path, cache_edgar_enclosure, find_entry_file
+export cacheheader!, cacheheaders!, cacheheaders, cachedir
+export cachefile, purgefile, urltopath, cache_edgar_enclosure
 
 mutable struct HttpCache
-    cache_dir::AbstractString
+    cachedir::AbstractString
     headers::Dict{AbstractString, AbstractString}
 
-    HttpCache(cache_dir="./cache/", headers=Dict{String,String}()) = new(
-        endswith(cache_dir, "/") ? cache_dir : cache_dir * "/",
+    HttpCache(cachedir="./cache/", headers=Dict{String,String}()) = new(
+        endswith(cachedir, "/") ? cachedir : cachedir * "/",
         headers
     )
 
 end
 
-function cache_file(cache::HttpCache, file_url::AbstractString)::AbstractString
+cachedir(cache::HttpCache) = cache.cachedir
+cacheheaders(cache::HttpCache) = cache.headers
 
-    file_path::AbstractString = url_to_path(cache, file_url)
+Base.show(io::IO, c::HttpCache) = print(
+    io, "$(abspath(cachedir(c)))"
+)
+
+function cacheheader!(cache::HttpCache, header::Pair{String,String})
+    get!(cache.headers, header.first, header.second)
+    return cacheheaders(cache)
+end
+
+function cacheheaders!(cache::HttpCache, headers::Vector{Pair{String,String}})
+    for header in headers
+        cacheheader!(cache, header)
+    end
+end
+
+function cachefile(cache::HttpCache, file_url::AbstractString)::AbstractString
+
+    file_path::AbstractString = urltopath(cache, file_url)
 
     isfile(file_path) && return file_path
 
@@ -27,35 +46,35 @@ function cache_file(cache::HttpCache, file_url::AbstractString)::AbstractString
 
     mkpath(file_dir_path)
 
-    Downloads.download(file_url, file_path; headers=cache.headers)
+    Downloads.download(file_url, file_path; headers=cacheheaders(cache))
 
     return file_path
 
 end
 
-function purge_file(cache::HttpCache, file_url::AbstractString)::Bool
+function purgefile(cache::HttpCache, file_url::AbstractString)::Bool
     try
-        rm(url_to_path(cache, file_url))
+        rm(urltopath(cache, file_url))
     catch
         return false
     end
     return true
 end
 
-function url_to_path(cache::HttpCache, url::AbstractString)::AbstractString
+function urltopath(cache::HttpCache, url::AbstractString)::AbstractString
     rep::Pair{Regex, AbstractString} = r"https?://" => ""
-    return cache.cache_dir * replace(url, rep)
+    return cachedir(cache) * replace(url, rep)
 end
 
 function cache_edgar_enclosure(cache::HttpCache, enclosure_url::AbstractString)
 
     if endswith(enclosure_url, ".zip")
 
-        enclosure_path::AbstractString = cache_file(cache, enclosure_url)
+        enclosure_path::AbstractString = cachefile(cache, enclosure_url)
 
         parent_path::AbstractString = join(split(enclosure_url, "/")[1:end-1], "/")
 
-        submission_dir_path::AbstractString = url_to_path(cache, parent_path)
+        submission_dir_path::AbstractString = urltopath(cache, parent_path)
 
         r::ZipFile.Reader = ZipFile.Reader(enclosure_path)
 

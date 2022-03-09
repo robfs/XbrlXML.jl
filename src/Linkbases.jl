@@ -5,7 +5,7 @@ include("uri_helper.jl")
 using ..EzXML, ..Cache
 
 export Linkbase, ExtendedLink, Locator, Label
-export parse_linkbase, parse_linkbase_url
+export parselinkbase, parselinkbase_url
 export RelationArc, DefinitionArc, CalculationArc, PresentationArc, LabelArc, AbstractArcElement
 
 const NAME_SPACES = [
@@ -267,18 +267,18 @@ function to_simple_dict(linkbase::Linkbase)::Dict{String, Vector{Dict{String, An
     return Dict(p)
 end
 
-function parse_linkbase_url(linkbase_url::AbstractString, linkbase_type::LinkbaseType, cache::HttpCache)::Linkbase
+function parselinkbase_url(linkbase_url::AbstractString, linkbase_type::LinkbaseType, cache::HttpCache)::Linkbase
 
     if startswith(linkbase_url, "http")
-        linkbase_path = cache_file(cache, linkbase_url)
-        return parse_linkbase(linkbase_path, linkbase_type, linkbase_url)
+        linkbase_path = cachefile(cache, linkbase_url)
+        return parselinkbase(linkbase_path, linkbase_type, linkbase_url)
     else
         throw("This function only parses remotely saved linkbases.")
     end
 
 end
 
-function parse_linkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseType, linkbase_url::Union{AbstractString,Nothing}=nothing):: Linkbase
+function parselinkbase(linkbase_path::AbstractString, linkbase_type::LinkbaseType, linkbase_url::Union{AbstractString,Nothing}=nothing):: Linkbase
 
     startswith(linkbase_path, "http") && throw("This function only parses locally saved linkbases.")
 

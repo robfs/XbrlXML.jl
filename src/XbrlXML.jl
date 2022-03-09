@@ -14,10 +14,12 @@ using .Taxonomy
 include("Instance.jl")
 using .Instance
 
-export HttpCache, cache_edgar_enclosure, cache_file, purge_file, url_to_path
-export XbrlInstance, parse_instance, parse_instance_locally
-export parse_xbrl, parse_ixbrl, parse_xbrl_url, parse_ixbrl_url
-export parse_linkbase, parse_linkbase_url
-export parse_taxonomy, parse_common_taxonomy, parse_taxonomy_url, get_taxonomy
+export HttpCache, cache_edgar_enclosure, cachefile, purgefile, urltopath
+export cacheheader!, cacheheaders!, cacheheaders, cachedir
+export XbrlInstance, parseinstance, parseinstance_locally
+export facts
+export parsexbrl, parseixbrl, parsexbrl_url, parseixbrl_url
+export parselinkbase, parselinkbase_url
+export parsetaxonomy, parsecommontaxonomy, parsetaxonomy_url, gettaxonomy
 
 end

@@ -1,6 +1,6 @@
 # XbrlXML.jl
 
-This is a pure `Julia` implementation of the [`py-xbrl`](https://pypi.org/project/py-xbrl/) python package using [`EzXML.jl`](https://juliapackages.com/p/ezxml) to parse the raw XML.
+This is a pure Julia implementation of the [`py-xbrl`](https://pypi.org/project/py-xbrl/) python package. [`EzXML.jl`](https://juliapackages.com/p/ezxml) is used to parse the raw XML.
 
 See `Python` documentation for now - docstrings and documentation being written. 
 
@@ -8,7 +8,7 @@ See `Python` documentation for now - docstrings and documentation being written.
 using XbrlXML
 
 cache = HttpCache("./cache")
-cache.headers = Dict("User-Agent" => "Your Name, yourname@domain.com")
+cacheheader!(cache, "User-Agent" => "Your Name, yourname@domain.com")
 
 url = "https://www.sec.gov/Archives/edgar/data/0000789019/000156459021002316/msft-10q_20201231.htm"
 
