@@ -3,7 +3,7 @@ module Instance
 include("uri_helper.jl")
 include("transformation.jl")
 
-using ..EzXML, ..Cache, ..Taxonomy, Dates
+using ..EzXML, ..Cache, ..Taxonomy, Dates, Printf
 
 export XbrlInstance, ExplicitMember, Footnote
 export NumericFact, TextFact, AbstractFact
@@ -22,7 +22,7 @@ NAME_SPACES = [
     "xbrldi" => "http://xbrl.org/2006/xbrldi"
 ]
 
-function nodeget(node::EzXML.Node, key, default)
+function _nodeget(node::EzXML.Node, key, default)
     haskey(node, key) && return node[key]
     return default
 end
@@ -126,11 +126,24 @@ end
 
 facts(instance::XbrlInstance) = instance.facts
 
-function _trimmedfactvalue(fact::TextFact)
-    start::Int = startswith(fact.value, '\n') ? 2 : 1
-    length(fact.value) <= 30 && return fact.value[start:end]
-    return fact.value[start:27] * "..."
+function _trimmedfactvalue(f::TextFact)
+    start::Int = startswith(f.value, '\n') ? 2 : 1
+    length(f.value) <= 30 && return f.value[start:end]
+    return f.value[start:27] * "..."
 end
+
+function _formatnumericfactvalue(f::NumericFact)
+    f.value isa Nothing && return f.value
+    if f.value > 10e3
+        out::AbstractString = @sprintf "%d" f.value
+    elseif f.value < 10e-3
+        out = @sprintf "%e" f.value
+    else
+        out = @sprintf "%.2f" f.value
+    end
+    replace(out, r"(\d)(?=(\d{3})+$)" => s"\1,")
+end
+
 
 Base.show(io::IO, m::ExplicitMember) = print(
     io, "$(m.member.name) on dimension $(m.dimension.name)"
@@ -144,7 +157,7 @@ Base.show(io::IO, c::TimeFrameContext) = print(
 Base.show(io::IO, u::SimpleUnit) = print(io, self.unit)
 Base.show(io::IO, u::DivideUnit) = print(io, u.numerator, "/", u.denominator)
 Base.show(io::IO, f::NumericFact) = print(
-    io, f.concept.name, ": ", f.value
+    io, f.concept.name, ": ", _formatnumericfactvalue(f)
 )
 Base.show(io::IO, f::TextFact) = print(
     io, f.concept.name, ": ", _trimmedfactvalue(f)
@@ -275,7 +288,7 @@ function parseixbrl(instance_path, cache::HttpCache, instance_url::Union{Abstrac
             fact_value::Union{Real,AbstractString,Nothing} = _extract_non_fraction_value(fact_elem)
 
             unit::AbstractUnit = unit_dir[fact_elem["unitRef"]]
-            decimals_text::AbstractString = nodeget(fact_elem, "decimals", "0")
+            decimals_text::AbstractString = _nodeget(fact_elem, "decimals", "0")
             decimals::Union{Integer,Nothing} = lowercase(decimals_text) == "inf" ? nothing : parse(Int, decimals_text)
 
             push!(facts, NumericFact(concept, context, fact_value, unit, decimals))
@@ -299,7 +312,7 @@ function _extract_non_numeric_value(fact_elem::EzXML.Node)::String
         fact_value *= _extract_text_value(child)
     end
 
-    fact_format::Union{AbstractString,Nothing} = nodeget(fact_elem, "format", nothing)
+    fact_format::Union{AbstractString,Nothing} = _nodeget(fact_elem, "format", nothing)
     if !(fact_format isa Nothing)
         if startswith(fact_format, "ixt:")
             fact_value = transform_ixt(fact_value, split(fact_format, ":")[2])
@@ -313,7 +326,7 @@ end
 
 function _extract_non_fraction_value(fact_elem::EzXML.Node)::Union{Float64,Nothing}
 
-    nodeget(fact_elem, "xsi:nil", "false") == "true" && return nothing
+    _nodeget(fact_elem, "xsi:nil", "false") == "true" && return nothing
 
     haselement(fact_elem) && return nothing
 
@@ -323,9 +336,9 @@ function _extract_non_fraction_value(fact_elem::EzXML.Node)::Union{Float64,Nothi
         fact_value *= _extract_text_value(child)
     end
 
-    fact_format::Union{AbstractString,Nothing} = nodeget(fact_elem, "format", nothing)
-    value_scale::Integer = parse(Int, nodeget(fact_elem, "scale", "0"))
-    value_sign::Union{AbstractString,Nothing} = nodeget(fact_elem, "sign", nothing)
+    fact_format::Union{AbstractString,Nothing} = _nodeget(fact_elem, "format", nothing)
+    value_scale::Integer = parse(Int, _nodeget(fact_elem, "scale", "0"))
+    value_sign::Union{AbstractString,Nothing} = _nodeget(fact_elem, "sign", nothing)
 
     if !(fact_format isa Nothing)
         if startswith(fact_format, "ixt:")
