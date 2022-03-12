@@ -120,7 +120,7 @@ function transform_ixt_sec(value::AbstractString, transform_format::AbstractStri
 end
 
 function replace_text_numbers(text::AbstractString)::AbstractString
-    text = replace(strip(lowercase(text)), "\xa0" => " ")
+    text = replace(strip(lowercase(text)), '\ua0' => " ")
     seg::Vector{AbstractString} = split(text, " ")
     for (i, x) in enumerate(seg)
         try
