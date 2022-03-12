@@ -1,4 +1,4 @@
-UNITNUMBERS = Dict([
+_UNITNUMBERS = Dict([
     "zero" => 0,
     "one" => 1,
     "two" => 2,
@@ -29,7 +29,7 @@ UNITNUMBERS = Dict([
     "ninety" => 90
 ])
 
-ORDEROFMAGNITUDE = Dict([
+_ORDEROFMAGNITUDE = Dict([
     "thousand" => 1000,
     "million" => 1000000,
     "billion" => 1000000000,
@@ -43,6 +43,12 @@ ORDEROFMAGNITUDE = Dict([
     "decillion" => 1000000000000000000000000000000000,
 ])
 
+struct NumberException <: Exception
+    numbertext::AbstractString
+end
+
+Base.show(io::IO, n::NumberException) = print(io, "Unknown number: $(n.numbertext)")
+
 function text2num(s::AbstractString)::Real
     s = replace(lowercase(s), " and " => " ")
     re::Regex = r"[\s-]+"
@@ -50,22 +56,22 @@ function text2num(s::AbstractString)::Real
     n = 0
     g = 0
     for w in a
-        x = get(UNITNUMBERS, w, nothing)
+        x = get(_UNITNUMBERS, w, nothing)
         if !(x isa Nothing)
             g += x
         elseif w == "hundred" && g != 0
             g *= 100
         else
-            x = get(ORDEROFMAGNITUDE, w, nothing)
+            x = get(_ORDEROFMAGNITUDE, w, nothing)
             if !(x isa Nothing)
                 n += g * x
                 g = 0
             else
-                throw(error("Unknown number: " * w))
+                throw(NumberException(w))
             end
         end
     end
     return n + g
 end
 
-text2num(x::Real)::Real = x
+text2num(x::Number)::Number = x
