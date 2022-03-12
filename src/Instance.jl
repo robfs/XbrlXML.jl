@@ -218,10 +218,10 @@ function parsexbrl(instance_path, cache::HttpCache, instance_url::Union{Abstract
         end
 
         concept::Concept = tax.concepts[tax.name_id_map[concept_name]]
-        context::AbstractContext = context_dir[fact_elem["contextRef"]]
+        context::AbstractContext = context_dir[strip(fact_elem["contextRef"])]
 
         if haskey(fact_elem, "unitRef")
-            unit::AbstractUnit = unit_dir[fact_elem["unitRef"]]
+            unit::AbstractUnit = unit_dir[strip(fact_elem["unitRef"])]
             decimals_text::AbstractString = strip(fact_elem["decimals"])
             decimals::Union{Int,Nothing} = lowercase(decimals_text) == "inf" ? nothing : trunc(Int, parse(Float64, decimals_text))
             fact::AbstractFact = NumericFact(concept, context, parse(Float64, strip(fact_elem.content)), unit, decimals)
@@ -282,12 +282,12 @@ function parseixbrl(instance_path, cache::HttpCache, instance_url::Union{Abstrac
             tax = _load_common_taxonomy(cache, ns_map[taxonomy_prefix], taxonomy)
         end
         concept::Concept = tax.concepts[tax.name_id_map[concept_name]]
-        context::AbstractContext = context_dir[fact_elem["contextRef"]]
+        context::AbstractContext = context_dir[strip(fact_elem["contextRef"])]
 
         if fact_elem.name == "nonFraction"
             fact_value::Union{Real,AbstractString,Nothing} = _extract_non_fraction_value(fact_elem)
 
-            unit::AbstractUnit = unit_dir[fact_elem["unitRef"]]
+            unit::AbstractUnit = unit_dir[strip(fact_elem["unitRef"])]
             decimals_text::AbstractString = _nodeget(fact_elem, "decimals", "0")
             decimals::Union{Integer,Nothing} = lowercase(decimals_text) == "inf" ? nothing : parse(Int, decimals_text)
 
@@ -370,6 +370,14 @@ function _extract_text_value(element::EzXML.Node)::String
 end
 
 
+function _parse_date_content(datenode::EzXML.Node)::Date
+    try
+        return Date(strip(datenode.content), "Y-m-d")
+    catch ArgumentError
+        return Date(DateTime(strip(datenode.content)))
+    end
+end
+
 function _parse_context_elements(
     context_elements::Vector{EzXML.Node},
     ns_map::Dict,
@@ -386,11 +394,11 @@ function _parse_context_elements(
         forever::Union{EzXML.Node,Nothing} = findfirst("xbrli:period/xbrli:forever", context_elem, NAME_SPACES)
 
         if !(instant_date isa Nothing)
-            context::AbstractContext = InstantContext(context_id, entity, Date(strip(instant_date.content), "y-m-d"))
+            context::AbstractContext = InstantContext(context_id, entity, _parse_date_content(instant_date))
         elseif !(forever isa Nothing)
             context = ForeverContext(context_id, entity)
         else
-            context = TimeFrameContext(context_id, entity, Date(strip(start_date.content), "y-m-d"), Date(strip(end_date.content), "y-m-d"))
+            context = TimeFrameContext(context_id, entity, _parse_date_content(start_date), _parse_date_content(end_date))
         end
 
         segment::Union{EzXML.Node,Nothing} = findfirst("xbrli:entity/xbrli:segment", context_elem, NAME_SPACES)
