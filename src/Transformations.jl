@@ -33,6 +33,85 @@ include("text2num.jl")
 export normalize
 export AbstractTransformationException, TransformationNotImplemented
 
+_EXCHANGENORM = Dict([
+    "new york stock exchange" => "NYSE",
+    "nasdaq global select market" => "NASDAQ",
+    "nasdaq stock market" => "NASDAQ",
+    "box exchange" => "BOX",
+    "nasdaq bx" => "BX",
+    "cboe c2 exchange" => "C2",
+    "cboe exchange" => "CBOE",
+    "chicago stock exchange" => "CHX",
+    "cboe byx exchange" => "CboeBYX",
+    "cboe bzx exchange" => "CboeBZX",
+    "cboe edga exchange" => "CboeEDGA",
+    "cboe edgx exchange" => "CboeEDGX",
+    "nasdaq gemx" => "GEMX",
+    "investors exchange" => "IEX",
+    "nasdaq ise" => "ISE",
+    "miami international securities exchange" => "MIAX",
+    "nasdaq mrx" => "MRX",
+    "nyse american" => "NYSEAMER",
+    "nyse arca" => "NYSEArca",
+    "nyse national" => "NYSENAT",
+    "miax pearl" => "PEARL",
+    "nasdaq phlx" => "Phlx",
+])
+
+_STATENORMUS = Dict([
+    "alabama" => "AL",
+    "alaska" => "AK",
+    "arizona" => "AZ",
+    "arkansas" => "AR",
+    "california" => "CA",
+    "colorado" => "CO",
+    "connecticut" => "CT",
+    "delaware" => "DE",
+    "florida" => "FL",
+    "georgia" => "GA",
+    "hawaii" => "HI",
+    "idaho" => "ID",
+    "illinois" => "IL",
+    "indiana" => "IN",
+    "iowa" => "IA",
+    "kansas" => "KS",
+    "kentucky" => "KY",
+    "louisiana" => "LA",
+    "maine" => "ME",
+    "maryland" => "MD",
+    "massachusetts" => "MA",
+    "michigan" => "MI",
+    "minnesota" => "MN",
+    "mississippi" => "MS",
+    "missouri" => "MO",
+    "montana" => "MT",
+    "nebraska" => "NE",
+    "nevada" => "NV",
+    "new hampshire" => "NH",
+    "new jersey" => "NJ",
+    "new mexico" => "NM",
+    "new york" => "NY",
+    "north carolina" => "NC",
+    "north dakota" => "ND",
+    "ohio" => "OH",
+    "oklahoma" => "OK",
+    "oregon" => "OR",
+    "pennsylvania" => "PA",
+    "rhode island" => "RI",
+    "south carolina" => "SC",
+    "south dakota" => "SD",
+    "tennessee" => "TN",
+    "texas" => "TX",
+    "utah" => "UT",
+    "vermont" => "VT",
+    "virginia" => "VA",
+    "washington" => "WA",
+    "washington dc" => "DC",
+    "west virginia" => "WV",
+    "wisconsin" => "WI",
+    "wyoming" => "WY",
+])
+
 abstract type AbstractTransformationException <: Exception end
 struct TransformationException <: AbstractTransformationException
     message::String
@@ -105,6 +184,26 @@ _numdotdecimal(value) = replace(value, r"[^\d.]+" => "")
 
 # region ixt-sec mappings
 
+function _duryear(value)
+    num = parse(Float64, value)
+    ispositive = num >= 0
+    yeardec = abs(num)
+    fullyears = floor(Int, yeardec)
+    fulldays = round(Int, (yeardec - fullyears) * 365.25)
+    fullmonths = round(Int, fulldays / 30.437)
+    remainingdays = round(Int, fulldays - fullmonths * 30.437)
+    return "$(ispositive ? "P" : "-P")$(fullyears)Y$(fullmonths)M$(remainingdays)D"
+end
+
+function _durmonth(value)
+    num = parse(Float64, value)
+    ispositive = num >= 0
+    monthdec = abs(num)
+    fullmonths = floor(Int, monthdec)
+    remainingdays = round(Int, (monthdec - fullmonths) * 30)
+    return "$(ispositive ? "P" : "-P")$(fullmonths)M$(remainingdays)D"
+end
+
 function _match_durwords(value, tomatch)::Int
     m = match(Regex("(?<match>\\d+) $(tomatch)"), value)
     m isa Nothing && return 0
@@ -133,6 +232,39 @@ function _ballotbox(value)
         throw(TransformationException("Invalid input $(value) for ballotbox transformation rule"))
     end
 end
+
+function _exchangenameen(value)
+    name = replace(strip(lowercase(value)), r"[^\w\s\d]|inc|llc|the" => "")
+    name = strip(replace(name, r" {2,}" => " "))
+    if uppercase(name) in values(_EXCHANGENORM)
+        return uppercase(name)
+    end
+    try
+        return _EXCHANGENORM[name]
+    catch e
+        e isa KeyError && throw(TransformationException("Unkown exchange $(value)"))
+        rethrow(e)
+    end
+end
+
+function _stateprovnameen(value)
+    name = strip(lowercase(value))
+    name = replace(name, r"[^\w\s\d]" => "")
+    try
+        return _STATENORMUS[name]
+    catch e
+        e isa KeyError && throw(TransformationException("uknown US state $(value)"))
+    end
+end
+
+function _entityfilercategoryen(value)
+    value = strip(lowercase(value))
+    value == "large accelerated filer" && return "Large Accelerated Filer"
+    value == "accelerated filer" && return "Accelerated Filer"
+    value == "non-accelerated filer" && return "Non-accelerated Filer"
+    throw(TransformationException("Unknown filer category"))
+end
+
 
 
 _IXT3 = Dict([
@@ -268,8 +400,8 @@ _IXT4 = Dict([
 ])
 
 _IXTSEC = Dict([
-    "duryear" => _notimplemented,
-    "durmonth" => _notimplemented,
+    "duryear" => _duryear,
+    "durmonth" => _durmonth,
     "durweek" => _notimplemented,
     "durday" => _notimplemented,
     "durhour" => _notimplemented,
@@ -277,11 +409,11 @@ _IXTSEC = Dict([
     "numwordsen" => _numwordsen,
     "datequarterend" => _notimplemented,
     "boolballotbox" => _ballotbox,
-    "exchnameen" => _notimplemented,
-    "stateprovnameen" => _notimplemented,
+    "exchnameen" => _exchangenameen,
+    "stateprovnameen" => _stateprovnameen,
     "countrynameen" => _notimplemented,
     "edgarprovcountryen" => _notimplemented,
-    "entityfilercategoryen" => _notimplemented,
+    "entityfilercategoryen" => _entityfilercategoryen,
 ])
 
 function normalize(namespace::AbstractString, formatcode::AbstractString, value::AbstractString)::AbstractString
