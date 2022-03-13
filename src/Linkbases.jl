@@ -2,7 +2,7 @@ module Linkbases
 
 include("uri_helper.jl")
 
-using ..EzXML, ..Cache
+using ..EzXML, ..Cache, ..Exceptions
 
 export Linkbase, ExtendedLink, Locator, Label
 export parselinkbase, parselinkbase_url

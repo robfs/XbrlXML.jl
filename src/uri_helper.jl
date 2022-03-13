@@ -1,8 +1,3 @@
-"""
-    resolve_uri(dir_uri::String, relative_uri::String)::String
-
-Return a complete absolute URI.
-"""
 function resolve_uri(dir_uri::AbstractString, relative_uri::AbstractString)::AbstractString
     startswith(relative_uri, "http") && return relative_uri
     relative_uri = replace(relative_uri, r"^/" => "")
