@@ -159,7 +159,7 @@ Base.show(io::IO, c::InstantContext) = print(
 Base.show(io::IO, c::TimeFrameContext) = print(
     io, "$(c.start_date) to $(c.end_date) $(length(c.segments)) dimension"
 )
-Base.show(io::IO, u::SimpleUnit) = print(io, self.unit)
+Base.show(io::IO, u::SimpleUnit) = print(io, u.unit)
 Base.show(io::IO, u::DivideUnit) = print(io, u.numerator, "/", u.denominator)
 Base.show(io::IO, f::NumericFact) = print(
     io, f.concept.name, ": ", _formatnumericfactvalue(f)
