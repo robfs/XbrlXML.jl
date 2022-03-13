@@ -5,6 +5,9 @@ using EzXML
 include("Exceptions.jl")
 using .Exceptions
 
+include("Transformations.jl")
+using .Transformations
+
 include("Cache.jl")
 using .Cache
 

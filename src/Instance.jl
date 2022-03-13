@@ -1,9 +1,14 @@
 module Instance
 
 include("uri_helper.jl")
-include("transformation.jl")
 
-using ..EzXML, ..Cache, ..Taxonomy, ..Exceptions, Dates, Printf
+using ..EzXML
+using ..Cache
+using ..Taxonomy
+using ..Exceptions
+using Dates
+using Printf
+using ..Transformations
 
 export XbrlInstance, ExplicitMember, Footnote
 export NumericFact, TextFact, AbstractFact
@@ -314,10 +319,21 @@ function _extract_non_numeric_value(fact_elem::EzXML.Node)::String
 
     fact_format::Union{AbstractString,Nothing} = _nodeget(fact_elem, "format", nothing)
     if !(fact_format isa Nothing)
-        if startswith(fact_format, "ixt:")
-            fact_value = transform_ixt(fact_value, split(fact_format, ":")[2])
-        elseif startswith(fact_format, "ixt-sec")
-            fact_value = transform_ixt_sec(fact_value, split(fact_format, ":")[2])
+        (prefix, formatcode) = split(fact_format, ":")
+        # @show namespaces(fact_elem)
+        namespace = Dict(namespaces(fact_elem))[prefix]
+        try
+            fact_value = normalize(namespace, formatcode, fact_value)
+        catch e
+            if e isa TransformationNotImplemented
+                @info e.message * "\nthe parser will return the raw value as text"
+                return fact_value
+            elseif e isa AbstractTransformationException
+                @warn e.message
+                return fact_value
+            else
+                rethrow(e)
+            end
         end
     end
 
@@ -341,10 +357,20 @@ function _extract_non_fraction_value(fact_elem::EzXML.Node)::Union{Float64,Nothi
     value_sign::Union{AbstractString,Nothing} = _nodeget(fact_elem, "sign", nothing)
 
     if !(fact_format isa Nothing)
-        if startswith(fact_format, "ixt:")
-            fact_value = transform_ixt(fact_value, split(fact_format, ":")[2])
-        elseif startswith(fact_format, "ixt-sec")
-            fact_value = transform_ixt_sec(fact_value, split(fact_format, ":")[2])
+        (prefix, formatcode) = split(fact_format, ":")
+        namespace = Dict(namespaces(fact_elem))[prefix]
+        try
+            fact_value = normalize(namespace, formatcode, fact_value)
+        catch e
+            if e isa TransformationNotImplemented
+                @info e.message * "\nthe parser will return the raw value as text"
+                return fact_value
+            elseif e isa AbstractTransformationException
+                @warn e.message
+                return fact_value
+            else
+                rethrow(e)
+            end
         end
     end
 

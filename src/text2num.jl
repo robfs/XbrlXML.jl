@@ -1,3 +1,29 @@
+# This library is a simple implementation of a function to convert textual
+# numbers written in English into their integer representations.
+#
+# This code is open source according to the MIT License as follows.
+#
+# Copyright (c) 2008 Greg Hewgill
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+# https://github.com/ghewgill/text2num/
+
 _UNITNUMBERS = Dict([
     "zero" => 0,
     "one" => 1,
@@ -75,3 +101,16 @@ function text2num(s::AbstractString)::Real
 end
 
 text2num(x::Number)::Number = x
+
+function replace_text_numbers(text::AbstractString)::AbstractString
+    text = replace(strip(lowercase(text)), '\ua0' => " ")
+    seg::Vector{AbstractString} = split(text, " ")
+    for (i, x) in enumerate(seg)
+        try
+            seg[i] = "$(text2num(x))"
+        catch
+            continue
+        end
+    end
+    return join(seg, " ")
+end
