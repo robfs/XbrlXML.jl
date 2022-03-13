@@ -37,7 +37,7 @@ using Documenter
             @testset "Remote Linkbases" begin
                 cachedir::String = abspath("./cache/")
                 cache::HttpCache = HttpCache(cachedir)
-                cacheheader!(cache, "User-Agent" => "Test test@test.com")
+                header!(cache, "User-Agent" => "Test test@test.com")
                 linkbaseurl::String = "https://www.esma.europa.eu/taxonomy/2019-03-27/esef_cor-lab-de.xml"
                 linkbase = parselinkbase_url(linkbaseurl, XbrlXML.Linkbases.LABEL, cache)
                 @test length(linkbase.extended_links) == 1
@@ -63,7 +63,7 @@ using Documenter
             @testset "Remote Taxonomies" begin
                 cachedir::String = abspath("./cache/")
                 cache::HttpCache = HttpCache(cachedir)
-                cacheheader!(cache, "User-Agent" => "Test test@test.com")
+                header!(cache, "User-Agent" => "Test test@test.com")
                 schemaurl::String = "https://www.sec.gov/Archives/edgar/data/320193/000032019321000010/aapl-20201226.xsd"
                 tax = parsetaxonomy_url(schemaurl, cache)
                 @test length(tax.concepts) == 65
@@ -190,7 +190,7 @@ using Documenter
             @testset "Remote Instances" begin
                 cachedir::String = abspath("./cache/")
                 cache::HttpCache = HttpCache(cachedir)
-                cacheheader!(cache, "User-Agent" => "Test test@test.com")
+                header!(cache, "User-Agent" => "Test test@test.com")
                 url::String = "https://www.sec.gov/Archives/edgar/data/320193/000032019321000010/aapl-20201226.htm"
                 inst = parseixbrl_url(url, cache)
                 @test length(inst.context_map) == 207

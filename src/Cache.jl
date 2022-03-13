@@ -7,7 +7,7 @@ using Downloads
 using ZipFile
 
 export HttpCache
-export cacheheader!, cacheheaders!, cacheheaders, cachedir
+export header!, headers!, headers, cachedir
 export cachefile, purgefile, urltopath, cache_edgar_enclosure
 
 """
@@ -53,7 +53,7 @@ julia> cachedir(cache)
 cachedir(cache::HttpCache)::String = cache.cachedir
 
 """
-    cacheheaders(cache::HttpCache)::Dict
+    headers(cache::HttpCache)::Dict
 
 Return the headers of a cache.
 
@@ -63,21 +63,21 @@ julia> using XbrlXML
 
 julia> cache = HttpCache("/Users/user/cache/");
 
-julia> cacheheader!(cache, "User-Agent" => "You youremail@domain.com");
+julia> header!(cache, "User-Agent" => "You youremail@domain.com");
 
-julia> cacheheaders(cache)
+julia> headers(cache)
 Dict{String, String} with 1 entry:
   "User-Agent" => "You youremail@domain.com"
 ```
 """
-cacheheaders(cache::HttpCache)::Dict{String,String} = cache.headers
+headers(cache::HttpCache)::Dict{String,String} = cache.headers
 
 Base.show(io::IO, c::HttpCache) = print(
     io, "$(abspath(cachedir(c)))"
 )
 
 """
-    cacheheader!(cache::HttpCache, header::Pair)::Dict
+    header!(cache::HttpCache, header::Pair)::Dict
 
 Add a header pair to a cache and return the headers.
 
@@ -87,18 +87,18 @@ julia> using XbrlXML
 
 julia> cache = HttpCache("/Users/user/cache/");
 
-julia> cacheheader!(cache, "User-Agent" => "You youremail@domain.com")
+julia> header!(cache, "User-Agent" => "You youremail@domain.com")
 Dict{String, String} with 1 entry:
   "User-Agent" => "You youremail@domain.com"
 ```
 """
-function cacheheader!(cache::HttpCache, header::Pair{String,String})::Dict{String,String}
-    get!(cache.headers, header.first, header.second)
-    return cacheheaders(cache)
+function header!(cache::HttpCache, newheader::Pair{String,String})::Dict{String,String}
+    get!(cache.headers, newheader.first, newheader.second)
+    return headers(cache)
 end
 
 """
-    cacheheaders!(cache::HttpCache, header::Vector{Pair})::Dict
+    headers!(cache::HttpCache, header::Vector{Pair})::Dict
 
 Add multiple header pairs to a cache and return the headers.
 
@@ -108,19 +108,19 @@ julia> using XbrlXML
 
 julia> cache = HttpCache("/Users/user/cache/");
 
-julia> headers = ["User-Agent" => "You youremail@domain.com", "From" => "You"];
+julia> newheaders = ["User-Agent" => "You youremail@domain.com", "From" => "You"];
 
-julia> cacheheaders!(cache, headers)
+julia> headers!(cache, newheaders)
 Dict{String, String} with 2 entries:
   "From"       => "You"
   "User-Agent" => "You youremail@domain.com"
 ```
 """
-function cacheheaders!(cache::HttpCache, headers::Vector{Pair{String,String}})
-    for header in headers
-        cacheheader!(cache, header)
+function headers!(cache::HttpCache, newheaders::Vector{Pair{String,String}})
+    for header in newheaders
+        header!(cache, header)
     end
-    cacheheaders(cache)
+    headers(cache)
 end
 
 """
@@ -133,7 +133,7 @@ function cachefile(cache::HttpCache, file_url::String)::String
     isfile(file_path) && return file_path
     file_dir_path::AbstractString = join(split(file_path, "/")[1:end-1], "/")
     mkpath(file_dir_path)
-    Downloads.download(file_url, file_path; headers=cacheheaders(cache))
+    Downloads.download(file_url, file_path; headers=headers(cache))
     return file_path
 end
 

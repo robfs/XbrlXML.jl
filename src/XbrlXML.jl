@@ -18,7 +18,7 @@ include("Instance.jl")
 using .Instance
 
 export HttpCache, cache_edgar_enclosure, cachefile, purgefile, urltopath
-export cacheheader!, cacheheaders!, cacheheaders, cachedir
+export header!, headers!, headers, cachedir
 export XbrlInstance, parseinstance, parseinstance_locally
 export facts
 export parsexbrl, parseixbrl, parsexbrl_url, parseixbrl_url
