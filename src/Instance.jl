@@ -1,9 +1,14 @@
 module Instance
 
 include("uri_helper.jl")
-include("transformation.jl")
 
-using ..EzXML, ..Cache, ..Taxonomy, Dates
+using ..EzXML
+using ..Cache
+using ..Taxonomy
+using ..Exceptions
+using Dates
+using Printf
+using ..Transformations
 
 export XbrlInstance, ExplicitMember, Footnote
 export NumericFact, TextFact, AbstractFact
@@ -22,7 +27,7 @@ NAME_SPACES = [
     "xbrldi" => "http://xbrl.org/2006/xbrldi"
 ]
 
-function nodeget(node::EzXML.Node, key, default)
+function _nodeget(node::EzXML.Node, key, default)
     haskey(node, key) && return node[key]
     return default
 end
@@ -126,11 +131,24 @@ end
 
 facts(instance::XbrlInstance) = instance.facts
 
-function _trimmedfactvalue(fact::TextFact)
-    start::Int = startswith(fact.value, '\n') ? 2 : 1
-    length(fact.value) <= 30 && return fact.value[start:end]
-    return fact.value[start:27] * "..."
+function _trimmedfactvalue(f::TextFact)
+    start::Int = startswith(f.value, '\n') ? 2 : 1
+    length(f.value) <= 30 && return f.value[start:end]
+    return f.value[start:27] * "..."
 end
+
+function _formatnumericfactvalue(f::NumericFact)
+    f.value isa Nothing && return f.value
+    if f.value > 10e3
+        out::AbstractString = @sprintf "%d" f.value
+    elseif f.value < 10e-3
+        out = @sprintf "%e" f.value
+    else
+        out = @sprintf "%.2f" f.value
+    end
+    replace(out, r"(\d)(?=(\d{3})+$)" => s"\1,")
+end
+
 
 Base.show(io::IO, m::ExplicitMember) = print(
     io, "$(m.member.name) on dimension $(m.dimension.name)"
@@ -144,7 +162,7 @@ Base.show(io::IO, c::TimeFrameContext) = print(
 Base.show(io::IO, u::SimpleUnit) = print(io, self.unit)
 Base.show(io::IO, u::DivideUnit) = print(io, u.numerator, "/", u.denominator)
 Base.show(io::IO, f::NumericFact) = print(
-    io, f.concept.name, ": ", f.value
+    io, f.concept.name, ": ", _formatnumericfactvalue(f)
 )
 Base.show(io::IO, f::TextFact) = print(
     io, f.concept.name, ": ", _trimmedfactvalue(f)
@@ -205,10 +223,10 @@ function parsexbrl(instance_path, cache::HttpCache, instance_url::Union{Abstract
         end
 
         concept::Concept = tax.concepts[tax.name_id_map[concept_name]]
-        context::AbstractContext = context_dir[fact_elem["contextRef"]]
+        context::AbstractContext = context_dir[strip(fact_elem["contextRef"])]
 
         if haskey(fact_elem, "unitRef")
-            unit::AbstractUnit = unit_dir[fact_elem["unitRef"]]
+            unit::AbstractUnit = unit_dir[strip(fact_elem["unitRef"])]
             decimals_text::AbstractString = strip(fact_elem["decimals"])
             decimals::Union{Int,Nothing} = lowercase(decimals_text) == "inf" ? nothing : trunc(Int, parse(Float64, decimals_text))
             fact::AbstractFact = NumericFact(concept, context, parse(Float64, strip(fact_elem.content)), unit, decimals)
@@ -269,13 +287,13 @@ function parseixbrl(instance_path, cache::HttpCache, instance_url::Union{Abstrac
             tax = _load_common_taxonomy(cache, ns_map[taxonomy_prefix], taxonomy)
         end
         concept::Concept = tax.concepts[tax.name_id_map[concept_name]]
-        context::AbstractContext = context_dir[fact_elem["contextRef"]]
+        context::AbstractContext = context_dir[strip(fact_elem["contextRef"])]
 
         if fact_elem.name == "nonFraction"
             fact_value::Union{Real,AbstractString,Nothing} = _extract_non_fraction_value(fact_elem)
 
-            unit::AbstractUnit = unit_dir[fact_elem["unitRef"]]
-            decimals_text::AbstractString = nodeget(fact_elem, "decimals", "0")
+            unit::AbstractUnit = unit_dir[strip(fact_elem["unitRef"])]
+            decimals_text::AbstractString = _nodeget(fact_elem, "decimals", "0")
             decimals::Union{Integer,Nothing} = lowercase(decimals_text) == "inf" ? nothing : parse(Int, decimals_text)
 
             push!(facts, NumericFact(concept, context, fact_value, unit, decimals))
@@ -299,12 +317,23 @@ function _extract_non_numeric_value(fact_elem::EzXML.Node)::String
         fact_value *= _extract_text_value(child)
     end
 
-    fact_format::Union{AbstractString,Nothing} = nodeget(fact_elem, "format", nothing)
+    fact_format::Union{AbstractString,Nothing} = _nodeget(fact_elem, "format", nothing)
     if !(fact_format isa Nothing)
-        if startswith(fact_format, "ixt:")
-            fact_value = transform_ixt(fact_value, split(fact_format, ":")[2])
-        elseif startswith(fact_format, "ixt-sec")
-            fact_value = transform_ixt_sec(fact_value, split(fact_format, ":")[2])
+        (prefix, formatcode) = split(fact_format, ":")
+        # @show namespaces(fact_elem)
+        namespace = Dict(namespaces(fact_elem))[prefix]
+        try
+            fact_value = normalize(namespace, formatcode, fact_value)
+        catch e
+            if e isa TransformationNotImplemented
+                @info e.message * "\nthe parser will return the raw value as text"
+                return fact_value
+            elseif e isa AbstractTransformationException
+                @warn e.message
+                return fact_value
+            else
+                rethrow(e)
+            end
         end
     end
 
@@ -313,7 +342,7 @@ end
 
 function _extract_non_fraction_value(fact_elem::EzXML.Node)::Union{Float64,Nothing}
 
-    nodeget(fact_elem, "xsi:nil", "false") == "true" && return nothing
+    _nodeget(fact_elem, "xsi:nil", "false") == "true" && return nothing
 
     haselement(fact_elem) && return nothing
 
@@ -323,15 +352,25 @@ function _extract_non_fraction_value(fact_elem::EzXML.Node)::Union{Float64,Nothi
         fact_value *= _extract_text_value(child)
     end
 
-    fact_format::Union{AbstractString,Nothing} = nodeget(fact_elem, "format", nothing)
-    value_scale::Integer = parse(Int, nodeget(fact_elem, "scale", "0"))
-    value_sign::Union{AbstractString,Nothing} = nodeget(fact_elem, "sign", nothing)
+    fact_format::Union{AbstractString,Nothing} = _nodeget(fact_elem, "format", nothing)
+    value_scale::Integer = parse(Int, _nodeget(fact_elem, "scale", "0"))
+    value_sign::Union{AbstractString,Nothing} = _nodeget(fact_elem, "sign", nothing)
 
     if !(fact_format isa Nothing)
-        if startswith(fact_format, "ixt:")
-            fact_value = transform_ixt(fact_value, split(fact_format, ":")[2])
-        elseif startswith(fact_format, "ixt-sec")
-            fact_value = transform_ixt_sec(fact_value, split(fact_format, ":")[2])
+        (prefix, formatcode) = split(fact_format, ":")
+        namespace = Dict(namespaces(fact_elem))[prefix]
+        try
+            fact_value = normalize(namespace, formatcode, fact_value)
+        catch e
+            if e isa TransformationNotImplemented
+                @info e.message * "\nthe parser will return the raw value as text"
+                return fact_value
+            elseif e isa AbstractTransformationException
+                @warn e.message
+                return fact_value
+            else
+                rethrow(e)
+            end
         end
     end
 
@@ -357,6 +396,14 @@ function _extract_text_value(element::EzXML.Node)::String
 end
 
 
+function _parse_date_content(datenode::EzXML.Node)::Date
+    try
+        return Date(strip(datenode.content), "Y-m-d")
+    catch ArgumentError
+        return Date(DateTime(strip(datenode.content)))
+    end
+end
+
 function _parse_context_elements(
     context_elements::Vector{EzXML.Node},
     ns_map::Dict,
@@ -373,11 +420,11 @@ function _parse_context_elements(
         forever::Union{EzXML.Node,Nothing} = findfirst("xbrli:period/xbrli:forever", context_elem, NAME_SPACES)
 
         if !(instant_date isa Nothing)
-            context::AbstractContext = InstantContext(context_id, entity, Date(strip(instant_date.content), "y-m-d"))
+            context::AbstractContext = InstantContext(context_id, entity, _parse_date_content(instant_date))
         elseif !(forever isa Nothing)
             context = ForeverContext(context_id, entity)
         else
-            context = TimeFrameContext(context_id, entity, Date(strip(start_date.content), "y-m-d"), Date(strip(end_date.content), "y-m-d"))
+            context = TimeFrameContext(context_id, entity, _parse_date_content(start_date), _parse_date_content(end_date))
         end
 
         segment::Union{EzXML.Node,Nothing} = findfirst("xbrli:entity/xbrli:segment", context_elem, NAME_SPACES)

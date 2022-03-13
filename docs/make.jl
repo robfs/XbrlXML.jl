@@ -17,6 +17,7 @@ makedocs(
         "Instance" => "instance.md",
         "Linkbases" => "linkbases.md",
         "Taxonomy" => "taxonomy.md",
+        "Transformations" => "transformations.md",
     ],
 )
 
