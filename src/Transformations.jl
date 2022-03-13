@@ -184,6 +184,17 @@ _numdotdecimal(value) = replace(value, r"[^\d.]+" => "")
 
 # region ixt-sec mappings
 
+function _duryear(value)
+    num = parse(Float64, value)
+    ispositive = num >= 0
+    yeardec = abs(num)
+    fullyears = floor(Int, yeardec)
+    fulldays = round(Int, (yeardec - fullyears) * 365.25)
+    fullmonths = round(Int, fulldays / 30.437)
+    remainingdays = round(Int, fulldays - fullmonths * 30.437)
+    return "$(ispositive ? "P" : "-P")$(fullyears)Y$(fullmonths)M$(remainingdays)D"
+end
+
 function _match_durwords(value, tomatch)::Int
     m = match(Regex("(?<match>\\d+) $(tomatch)"), value)
     m isa Nothing && return 0
@@ -372,7 +383,7 @@ _IXT4 = Dict([
 ])
 
 _IXTSEC = Dict([
-    "duryear" => _notimplemented,
+    "duryear" => _duryear,
     "durmonth" => _notimplemented,
     "durweek" => _notimplemented,
     "durday" => _notimplemented,
