@@ -33,6 +33,31 @@ include("text2num.jl")
 export normalize
 export AbstractTransformationException, TransformationNotImplemented
 
+_EXCHANGENORM = Dict([
+    "new york stock exchange" => "NYSE",
+    "nasdaq global select market" => "NASDAQ",
+    "nasdaq stock market" => "NASDAQ",
+    "box exchange" => "BOX",
+    "nasdaq bx" => "BX",
+    "cboe c2 exchange" => "C2",
+    "cboe exchange" => "CBOE",
+    "chicago stock exchange" => "CHX",
+    "cboe byx exchange" => "CboeBYX",
+    "cboe bzx exchange" => "CboeBZX",
+    "cboe edga exchange" => "CboeEDGA",
+    "cboe edgx exchange" => "CboeEDGX",
+    "nasdaq gemx" => "GEMX",
+    "investors exchange" => "IEX",
+    "nasdaq ise" => "ISE",
+    "miami international securities exchange" => "MIAX",
+    "nasdaq mrx" => "MRX",
+    "nyse american" => "NYSEAMER",
+    "nyse arca" => "NYSEArca",
+    "nyse national" => "NYSENAT",
+    "miax pearl" => "PEARL",
+    "nasdaq phlx" => "Phlx",
+])
+
 abstract type AbstractTransformationException <: Exception end
 struct TransformationException <: AbstractTransformationException
     message::String
@@ -133,6 +158,21 @@ function _ballotbox(value)
         throw(TransformationException("Invalid input $(value) for ballotbox transformation rule"))
     end
 end
+
+function _exchangenameen(value)
+    value = replace(strip(lowercase(value)), r"[^\w\s\d]|inc|llc|the" => "")
+    value = strip(replace(value, r" {2,}" => " "))
+    if uppercase(value) in values(_EXCHANGENORM)
+        return uppercase(value)
+    end
+    try
+        return _EXCHANGENORM[value]
+    catch e
+        e isa KeyError && throw(TransformationException("Unkown exchange $(value)"))
+        rethrow(e)
+    end
+end
+
 
 
 _IXT3 = Dict([
@@ -277,7 +317,7 @@ _IXTSEC = Dict([
     "numwordsen" => _numwordsen,
     "datequarterend" => _notimplemented,
     "boolballotbox" => _ballotbox,
-    "exchnameen" => _notimplemented,
+    "exchnameen" => _exchangenameen,
     "stateprovnameen" => _notimplemented,
     "countrynameen" => _notimplemented,
     "edgarprovcountryen" => _notimplemented,
