@@ -2,6 +2,9 @@ module XbrlXML
 
 using EzXML
 
+include("Exceptions.jl")
+using .Exceptions
+
 include("Cache.jl")
 using .Cache
 
@@ -13,9 +16,6 @@ using .Taxonomy
 
 include("Instance.jl")
 using .Instance
-
-include("Exceptions.jl")
-using .Exceptions
 
 export HttpCache, cache_edgar_enclosure, cachefile, purgefile, urltopath
 export cacheheader!, cacheheaders!, cacheheaders, cachedir
