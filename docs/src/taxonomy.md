@@ -2,6 +2,6 @@
 
 ```@autodocs
 Modules = [XbrlXML.Taxonomy]
-Order   = [:type, :function]
+Order   = [:module, :type, :function]
 Pages   = ["Taxonomy.jl"]
 ```

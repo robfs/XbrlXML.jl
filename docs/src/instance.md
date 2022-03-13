@@ -2,6 +2,6 @@
 
 ```@autodocs
 Modules = [XbrlXML.Instance]
-Order   = [:type, :function]
+Order   = [:module, :type, :function]
 Pages   = ["Instance.jl"]
 ```

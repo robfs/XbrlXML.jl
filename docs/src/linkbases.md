@@ -2,6 +2,6 @@
 
 ```@autodocs
 Modules = [XbrlXML.Linkbases]
-Order   = [:type, :function]
+Order   = [:module, :type, :function]
 Pages   = ["Linkbases.jl"]
 ```
