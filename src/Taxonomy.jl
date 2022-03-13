@@ -4,7 +4,7 @@ using Memoize, LRUCache
 
 include("uri_helper.jl")
 
-using ..EzXML, ..Cache, ..Linkbases
+using ..EzXML, ..Cache, ..Linkbases, ..Exceptions
 
 import HTTP: unescapeuri
 

@@ -14,6 +14,9 @@ using .Taxonomy
 include("Instance.jl")
 using .Instance
 
+include("Exceptions.jl")
+using .Exceptions
+
 export HttpCache, cache_edgar_enclosure, cachefile, purgefile, urltopath
 export cacheheader!, cacheheaders!, cacheheaders, cachedir
 export XbrlInstance, parseinstance, parseinstance_locally

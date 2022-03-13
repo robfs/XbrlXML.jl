@@ -3,7 +3,7 @@ module Instance
 include("uri_helper.jl")
 include("transformation.jl")
 
-using ..EzXML, ..Cache, ..Taxonomy, Dates, Printf
+using ..EzXML, ..Cache, ..Taxonomy, ..Exceptions, Dates, Printf
 
 export XbrlInstance, ExplicitMember, Footnote
 export NumericFact, TextFact, AbstractFact
