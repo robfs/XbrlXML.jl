@@ -257,6 +257,14 @@ function _stateprovnameen(value)
     end
 end
 
+function _entityfilercategoryen(value)
+    value = strip(lowercase(value))
+    value == "large accelerated filer" && return "Large Accelerated Filer"
+    value == "accelerated filer" && return "Accelerated Filer"
+    value == "non-accelerated filer" && return "Non-accelerated Filer"
+    throw(TransformationException("Unknown filer category"))
+end
+
 
 
 _IXT3 = Dict([
@@ -405,7 +413,7 @@ _IXTSEC = Dict([
     "stateprovnameen" => _stateprovnameen,
     "countrynameen" => _notimplemented,
     "edgarprovcountryen" => _notimplemented,
-    "entityfilercategoryen" => _notimplemented,
+    "entityfilercategoryen" => _entityfilercategoryen,
 ])
 
 function normalize(namespace::AbstractString, formatcode::AbstractString, value::AbstractString)::AbstractString

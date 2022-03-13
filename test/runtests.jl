@@ -268,6 +268,7 @@ using Documenter
                 ["stateprovnameen", "West Virginia", "WV"],
                 ["stateprovnameen", "Wisconsin", "WI"],
                 ["stateprovnameen", "Wyoming", "WY"],
+                ["entityfilercategoryen", "accelerated filer", "Accelerated Filer"],
             ],
         ])
         for (namespace, transforms) in testtransforms
