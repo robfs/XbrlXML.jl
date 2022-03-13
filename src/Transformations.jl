@@ -195,6 +195,15 @@ function _duryear(value)
     return "$(ispositive ? "P" : "-P")$(fullyears)Y$(fullmonths)M$(remainingdays)D"
 end
 
+function _durmonth(value)
+    num = parse(Float64, value)
+    ispositive = num >= 0
+    monthdec = abs(num)
+    fullmonths = floor(Int, monthdec)
+    remainingdays = round(Int, (monthdec - fullmonths) * 30)
+    return "$(ispositive ? "P" : "-P")$(fullmonths)M$(remainingdays)D"
+end
+
 function _match_durwords(value, tomatch)::Int
     m = match(Regex("(?<match>\\d+) $(tomatch)"), value)
     m isa Nothing && return 0
@@ -384,7 +393,7 @@ _IXT4 = Dict([
 
 _IXTSEC = Dict([
     "duryear" => _duryear,
-    "durmonth" => _notimplemented,
+    "durmonth" => _durmonth,
     "durweek" => _notimplemented,
     "durday" => _notimplemented,
     "durhour" => _notimplemented,
