@@ -58,6 +58,60 @@ _EXCHANGENORM = Dict([
     "nasdaq phlx" => "Phlx",
 ])
 
+_STATENORMUS = Dict([
+    "alabama" => "AL",
+    "alaska" => "AK",
+    "arizona" => "AZ",
+    "arkansas" => "AR",
+    "california" => "CA",
+    "colorado" => "CO",
+    "connecticut" => "CT",
+    "delaware" => "DE",
+    "florida" => "FL",
+    "georgia" => "GA",
+    "hawaii" => "HI",
+    "idaho" => "ID",
+    "illinois" => "IL",
+    "indiana" => "IN",
+    "iowa" => "IA",
+    "kansas" => "KS",
+    "kentucky" => "KY",
+    "louisiana" => "LA",
+    "maine" => "ME",
+    "maryland" => "MD",
+    "massachusetts" => "MA",
+    "michigan" => "MI",
+    "minnesota" => "MN",
+    "mississippi" => "MS",
+    "missouri" => "MO",
+    "montana" => "MT",
+    "nebraska" => "NE",
+    "nevada" => "NV",
+    "new hampshire" => "NH",
+    "new jersey" => "NJ",
+    "new mexico" => "NM",
+    "new york" => "NY",
+    "north carolina" => "NC",
+    "north dakota" => "ND",
+    "ohio" => "OH",
+    "oklahoma" => "OK",
+    "oregon" => "OR",
+    "pennsylvania" => "PA",
+    "rhode island" => "RI",
+    "south carolina" => "SC",
+    "south dakota" => "SD",
+    "tennessee" => "TN",
+    "texas" => "TX",
+    "utah" => "UT",
+    "vermont" => "VT",
+    "virginia" => "VA",
+    "washington" => "WA",
+    "washington dc" => "DC",
+    "west virginia" => "WV",
+    "wisconsin" => "WI",
+    "wyoming" => "WY",
+])
+
 abstract type AbstractTransformationException <: Exception end
 struct TransformationException <: AbstractTransformationException
     message::String
@@ -160,16 +214,26 @@ function _ballotbox(value)
 end
 
 function _exchangenameen(value)
-    value = replace(strip(lowercase(value)), r"[^\w\s\d]|inc|llc|the" => "")
-    value = strip(replace(value, r" {2,}" => " "))
-    if uppercase(value) in values(_EXCHANGENORM)
-        return uppercase(value)
+    name = replace(strip(lowercase(value)), r"[^\w\s\d]|inc|llc|the" => "")
+    name = strip(replace(name, r" {2,}" => " "))
+    if uppercase(name) in values(_EXCHANGENORM)
+        return uppercase(name)
     end
     try
-        return _EXCHANGENORM[value]
+        return _EXCHANGENORM[name]
     catch e
         e isa KeyError && throw(TransformationException("Unkown exchange $(value)"))
         rethrow(e)
+    end
+end
+
+function _stateprovnameen(value)
+    name = strip(lowercase(value))
+    name = replace(name, r"[^\w\s\d]" => "")
+    try
+        return _STATENORMUS[name]
+    catch e
+        e isa KeyError && throw(TransformationException("uknown US state $(value)"))
     end
 end
 
@@ -318,7 +382,7 @@ _IXTSEC = Dict([
     "datequarterend" => _notimplemented,
     "boolballotbox" => _ballotbox,
     "exchnameen" => _exchangenameen,
-    "stateprovnameen" => _notimplemented,
+    "stateprovnameen" => _stateprovnameen,
     "countrynameen" => _notimplemented,
     "edgarprovcountryen" => _notimplemented,
     "entityfilercategoryen" => _notimplemented,
