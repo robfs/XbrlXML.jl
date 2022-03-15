@@ -5,6 +5,7 @@
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://robfs.github.io/XbrlXML.jl/dev)
 [![Build Status](https://travis-ci.com/robfs/XbrlXML.jl.svg?branch=main)](https://travis-ci.com/robfs/XbrlXML.jl)
 [![Coverage](https://codecov.io/gh/robfs/XbrlXML.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/robfs/XbrlXML.jl)
+[![Genie Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/XbrlXML)](https://pkgs.genieframework.com?packages=XbrlXML)
 
 A pure Julia implementation of the [`py-xbrl`](https://github.com/manusimidt/py-xbrl) Python package by [Manuel Schmidt](https://github.com/manusimidt).
 
