@@ -18,8 +18,9 @@ Base.show(io::IO, e::InstanceParseException) = print(io, "Error parsing instance
 Base.show(io::IO, e::ContextParseException) = print(io, "Error parsing context")
 Base.show(io::IO, e::TaxonomyParseException) = print(io, "error parsing taxonomy")
 Base.show(io::IO, e::TaxonomyNotFound) = print(
-    io, "the taxonomy with the namespace $(e.namespace) could not be found.",
-    "Check it is imported in the schema file."
+    io,
+    "the taxonomy with the namespace $(e.namespace) could not be found.",
+    "Check it is imported in the schema file.",
 )
 
 end # module

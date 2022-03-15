@@ -8,29 +8,33 @@ using Documenter
         cache::HttpCache = HttpCache(cachedir)
         testurl::String = "https://www.w3schools.com/xml/note.xml"
         expectedpath::String = cachedir * "www.w3schools.com/xml/note.xml"
-        rm(expectedpath; force=true)
+        rm(expectedpath; force = true)
         @test cachefile(cache, testurl) == expectedpath
         @test isfile(expectedpath)
         @test purgefile(cache, testurl)
         @test !(isfile(expectedpath))
-        rm(cachedir; force=true, recursive=true)
+        rm(cachedir; force = true, recursive = true)
     end
     @testset verbose = true "Linkbases" begin
         @testset "Local Linkbases" begin
             linkbasepath::String = abspath("./data/example-lab.xml")
-            linkbase::XbrlXML.Linkbase = parselinkbase(linkbasepath, XbrlXML.Linkbases.LABEL)
+            linkbase::XbrlXML.Linkbase =
+                parselinkbase(linkbasepath, XbrlXML.Linkbases.LABEL)
             rootlocator::XbrlXML.Locator = linkbase.extended_links[1].root_locators[1]
             @test length(linkbase.extended_links) == 1
             @test rootlocator.name == "loc_Assets"
             labelarcs::Vector{XbrlXML.LabelArc} = rootlocator.children
             @test labelarcs[1].labels[1].text == "Assets, total"
-            @test occursin("An asset is a resource with economic value",
-                            labelarcs[2].labels[1].text)
+            @test occursin(
+                "An asset is a resource with economic value",
+                labelarcs[2].labels[1].text,
+            )
             linkbasepath = abspath("./data/example-cal.xml")
             linkbase = parselinkbase(linkbasepath, XbrlXML.Linkbases.CALCULATION)
             assetslocator::XbrlXML.Locator = linkbase.extended_links[1].root_locators[1]
             @test assetslocator.concept_id == "example_Assets"
-            @test assetslocator.children[1].to_locator.concept_id == "example_NonCurrentAssets"
+            @test assetslocator.children[1].to_locator.concept_id ==
+                  "example_NonCurrentAssets"
             @test assetslocator.children[2].to_locator.concept_id == "example_CurrentAssets"
         end
         if isfile(abspath("./.env"))
@@ -42,10 +46,13 @@ using Documenter
                 linkbase = parselinkbase_url(linkbaseurl, XbrlXML.Linkbases.LABEL, cache)
                 @test length(linkbase.extended_links) == 1
                 @test length(linkbase.extended_links[1].root_locators) == 5028
-                assetslocator = filter(x -> x.name == "Assets", linkbase.extended_links[1].root_locators)[1]
+                assetslocator = filter(
+                    x -> x.name == "Assets",
+                    linkbase.extended_links[1].root_locators,
+                )[1]
                 assetslabel::XbrlXML.Label = assetslocator.children[1].labels[1]
                 @test assetslabel.text == "Vermögenswerte"
-                rm(cachedir; force=true, recursive=true)
+                rm(cachedir; force = true, recursive = true)
             end
         end
     end
@@ -55,7 +62,8 @@ using Documenter
             cache::HttpCache = HttpCache(cachedir)
             extensionschemapath::String = abspath("./data/example.xsd")
             tax::XbrlXML.TaxonomySchema = parsetaxonomy(extensionschemapath, cache)
-            srttax::XbrlXML.TaxonomySchema = gettaxonomy(tax, "http://fasb.org/srt/2020-01-31")
+            srttax::XbrlXML.TaxonomySchema =
+                gettaxonomy(tax, "http://fasb.org/srt/2020-01-31")
             @test length(srttax.concepts) == 489
             @test length(tax.concepts["example_Assets"].labels) == 2
         end
@@ -67,10 +75,11 @@ using Documenter
                 schemaurl::String = "https://www.sec.gov/Archives/edgar/data/320193/000032019321000010/aapl-20201226.xsd"
                 tax = parsetaxonomy_url(schemaurl, cache)
                 @test length(tax.concepts) == 65
-                usgaaptax::XbrlXML.TaxonomySchema = gettaxonomy(tax, "http://fasb.org/us-gaap/2020-01-31")
+                usgaaptax::XbrlXML.TaxonomySchema =
+                    gettaxonomy(tax, "http://fasb.org/us-gaap/2020-01-31")
                 @test length(usgaaptax.concepts) == 17281
                 @test length(tax.concepts["aapl_MacMember"].labels) == 3
-                rm(cachedir; force=true, recursive=true)
+                rm(cachedir; force = true, recursive = true)
             end
         end
     end
@@ -275,9 +284,14 @@ using Documenter
             for testcase in transforms
                 (formatcode, input, expected) = testcase
                 if expected == "exception"
-                    @test_throws AbstractTransformationException XbrlXML.Instance.normalize(namespace, formatcode, input)
+                    @test_throws AbstractTransformationException XbrlXML.Instance.normalize(
+                        namespace,
+                        formatcode,
+                        input,
+                    )
                 else
-                    received::String = XbrlXML.Instance.normalize(namespace, formatcode, input)
+                    received::String =
+                        XbrlXML.Instance.normalize(namespace, formatcode, input)
                     @test expected == received
                 end
             end
@@ -288,34 +302,169 @@ using Documenter
         @testset "Resolver" begin
             test_arr = [
                 # test paths
-                (("E:\\Programming\\python\\xbrl_parser\\tests\\data\\example.xsd", "/example-lab.xml"),
-                    join(["E:", "Programming", "python", "xbrl_parser", "tests", "data", "example-lab.xml"], Base.Filesystem.path_separator)),
-                ((raw"E:\Programming\python\xbrl_parser\tests\data\example.xsd", "/example-lab.xml"),
-                    join(["E:", "Programming", "python", "xbrl_parser", "tests", "data", "example-lab.xml"], Base.Filesystem.path_separator)),
-                (("E:/Programming/python/xbrl_parser/tests/data/example.xsd", "/example-lab.xml"),
-                    join(["E:", "Programming", "python", "xbrl_parser", "tests", "data", "example-lab.xml"], Base.Filesystem.path_separator)),
+                (
+                    (
+                        "E:\\Programming\\python\\xbrl_parser\\tests\\data\\example.xsd",
+                        "/example-lab.xml",
+                    ),
+                    join(
+                        [
+                            "E:",
+                            "Programming",
+                            "python",
+                            "xbrl_parser",
+                            "tests",
+                            "data",
+                            "example-lab.xml",
+                        ],
+                        Base.Filesystem.path_separator,
+                    ),
+                ),
+                (
+                    (
+                        raw"E:\Programming\python\xbrl_parser\tests\data\example.xsd",
+                        "/example-lab.xml",
+                    ),
+                    join(
+                        [
+                            "E:",
+                            "Programming",
+                            "python",
+                            "xbrl_parser",
+                            "tests",
+                            "data",
+                            "example-lab.xml",
+                        ],
+                        Base.Filesystem.path_separator,
+                    ),
+                ),
+                (
+                    (
+                        "E:/Programming/python/xbrl_parser/tests/data/example.xsd",
+                        "/example-lab.xml",
+                    ),
+                    join(
+                        [
+                            "E:",
+                            "Programming",
+                            "python",
+                            "xbrl_parser",
+                            "tests",
+                            "data",
+                            "example-lab.xml",
+                        ],
+                        Base.Filesystem.path_separator,
+                    ),
+                ),
                 # test different path separators
-                (("E:\\Programming\\python\\xbrl_parser\\tests\\data/example.xsd", "/example-lab.xml"),
-                    join(["E:", "Programming", "python", "xbrl_parser", "tests", "data", "example-lab.xml"], Base.Filesystem.path_separator)),
+                (
+                    (
+                        "E:\\Programming\\python\\xbrl_parser\\tests\\data/example.xsd",
+                        "/example-lab.xml",
+                    ),
+                    join(
+                        [
+                            "E:",
+                            "Programming",
+                            "python",
+                            "xbrl_parser",
+                            "tests",
+                            "data",
+                            "example-lab.xml",
+                        ],
+                        Base.Filesystem.path_separator,
+                    ),
+                ),
                 # test directory traversal
-                (("E:/Programming/python/xbrl_parser/tests/data/", "/../example-lab.xml"),
-                    join(["E:", "Programming", "python", "xbrl_parser", "tests", "example-lab.xml"], Base.Filesystem.path_separator)),
-                (("E:/Programming/python/xbrl_parser/tests/data", "./../example-lab.xml"),
-                    join(["E:", "Programming", "python", "xbrl_parser", "tests", "example-lab.xml"], Base.Filesystem.path_separator)),
-                (("E:/Programming/python/xbrl_parser/tests/data/example.xsd", "../../example-lab.xml"),
-                    join(["E:", "Programming", "python", "xbrl_parser", "example-lab.xml"], Base.Filesystem.path_separator)),
+                (
+                    (
+                        "E:/Programming/python/xbrl_parser/tests/data/",
+                        "/../example-lab.xml",
+                    ),
+                    join(
+                        [
+                            "E:",
+                            "Programming",
+                            "python",
+                            "xbrl_parser",
+                            "tests",
+                            "example-lab.xml",
+                        ],
+                        Base.Filesystem.path_separator,
+                    ),
+                ),
+                (
+                    (
+                        "E:/Programming/python/xbrl_parser/tests/data",
+                        "./../example-lab.xml",
+                    ),
+                    join(
+                        [
+                            "E:",
+                            "Programming",
+                            "python",
+                            "xbrl_parser",
+                            "tests",
+                            "example-lab.xml",
+                        ],
+                        Base.Filesystem.path_separator,
+                    ),
+                ),
+                (
+                    (
+                        "E:/Programming/python/xbrl_parser/tests/data/example.xsd",
+                        "../../example-lab.xml",
+                    ),
+                    join(
+                        ["E:", "Programming", "python", "xbrl_parser", "example-lab.xml"],
+                        Base.Filesystem.path_separator,
+                    ),
+                ),
                 # test urls
-                (("http://example.com/a/b/c/d/e/f/g", "file.xml"), "http://example.com/a/b/c/d/e/f/g/file.xml"),
-                (("http://example.com/a/b/c/d/e/f/g", "/file.xml"), "http://example.com/a/b/c/d/e/f/g/file.xml"),
-                (("http://example.com/a/b/c/d/e/f/g", "./file.xml"), "http://example.com/a/b/c/d/e/f/g/file.xml"),
-                (("http://example.com/a/b/c/d/e/f/g", "../file.xml"), "http://example.com/a/b/c/d/e/f/file.xml"),
-                (("http://example.com/a/b/c/d/e/f/g", "/../file.xml"), "http://example.com/a/b/c/d/e/f/file.xml"),
-                (("http://example.com/a/b/c/d/e/f/g", "./../file.xml"), "http://example.com/a/b/c/d/e/f/file.xml"),
-                (("http://example.com/a/b/c/d/e/f/g", "../../file.xml"), "http://example.com/a/b/c/d/e/file.xml"),
-                (("http://example.com/a/b/c/d/e/f/g", "/../../file.xml"), "http://example.com/a/b/c/d/e/file.xml"),
-                (("http://example.com/a/b/c/d/e/f/g", "./../../file.xml"), "http://example.com/a/b/c/d/e/file.xml"),
-                (("http://example.com/a/b/c/d/e/f/g/", "../../../file.xml"), "http://example.com/a/b/c/d/file.xml"),
-                (("http://example.com/a/b/c/d/e/f/g.xml", "../../../file.xml"), "http://example.com/a/b/c/file.xml")
+                (
+                    ("http://example.com/a/b/c/d/e/f/g", "file.xml"),
+                    "http://example.com/a/b/c/d/e/f/g/file.xml",
+                ),
+                (
+                    ("http://example.com/a/b/c/d/e/f/g", "/file.xml"),
+                    "http://example.com/a/b/c/d/e/f/g/file.xml",
+                ),
+                (
+                    ("http://example.com/a/b/c/d/e/f/g", "./file.xml"),
+                    "http://example.com/a/b/c/d/e/f/g/file.xml",
+                ),
+                (
+                    ("http://example.com/a/b/c/d/e/f/g", "../file.xml"),
+                    "http://example.com/a/b/c/d/e/f/file.xml",
+                ),
+                (
+                    ("http://example.com/a/b/c/d/e/f/g", "/../file.xml"),
+                    "http://example.com/a/b/c/d/e/f/file.xml",
+                ),
+                (
+                    ("http://example.com/a/b/c/d/e/f/g", "./../file.xml"),
+                    "http://example.com/a/b/c/d/e/f/file.xml",
+                ),
+                (
+                    ("http://example.com/a/b/c/d/e/f/g", "../../file.xml"),
+                    "http://example.com/a/b/c/d/e/file.xml",
+                ),
+                (
+                    ("http://example.com/a/b/c/d/e/f/g", "/../../file.xml"),
+                    "http://example.com/a/b/c/d/e/file.xml",
+                ),
+                (
+                    ("http://example.com/a/b/c/d/e/f/g", "./../../file.xml"),
+                    "http://example.com/a/b/c/d/e/file.xml",
+                ),
+                (
+                    ("http://example.com/a/b/c/d/e/f/g/", "../../../file.xml"),
+                    "http://example.com/a/b/c/d/file.xml",
+                ),
+                (
+                    ("http://example.com/a/b/c/d/e/f/g.xml", "../../../file.xml"),
+                    "http://example.com/a/b/c/file.xml",
+                ),
             ]
             for elem in test_arr
                 # only windows uses the \\ file path separator
@@ -335,7 +484,7 @@ using Documenter
                 ["./abc", "abc", true],
                 ["./abc", "\\abc\\", true],
                 ["./abc", "abcd", false],
-                ["http://abc.de", "https://abc.de", true]
+                ["http://abc.de", "https://abc.de", true],
             ]
             for test_case in test_arr
                 expected = test_case[3]
@@ -364,7 +513,7 @@ using Documenter
                 inst = parseixbrl_url(url, cache)
                 @test length(inst.context_map) == 207
                 @test length(inst.unit_map) == 9
-                rm(cachedir; force=true, recursive=true)
+                rm(cachedir; force = true, recursive = true)
             end
         end
     end

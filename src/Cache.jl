@@ -28,11 +28,9 @@ julia> cache = HttpCache("/Users/user/cache/")
 """
 mutable struct HttpCache
     cachedir::String
-    headers::Dict{String, String}
-    HttpCache(cachedir="./cache/", headers=Dict()) = new(
-        endswith(cachedir, "/") ? cachedir : cachedir * "/",
-        headers
-    )
+    headers::Dict{String,String}
+    HttpCache(cachedir = "./cache/", headers = Dict()) =
+        new(endswith(cachedir, "/") ? cachedir : cachedir * "/", headers)
 end
 
 """
@@ -72,9 +70,7 @@ Dict{String, String} with 1 entry:
 """
 headers(cache::HttpCache)::Dict{String,String} = cache.headers
 
-Base.show(io::IO, c::HttpCache) = print(
-    io, "$(abspath(cachedir(c)))"
-)
+Base.show(io::IO, c::HttpCache) = print(io, "$(abspath(cachedir(c)))")
 
 """
     header!(cache::HttpCache, header::Pair)::Dict
@@ -133,7 +129,7 @@ function cachefile(cache::HttpCache, file_url::String)::String
     isfile(file_path) && return file_path
     file_dir_path::AbstractString = join(split(file_path, "/")[1:end-1], "/")
     mkpath(file_dir_path)
-    Downloads.download(file_url, file_path; headers=headers(cache))
+    Downloads.download(file_url, file_path; headers = headers(cache))
     return file_path
 end
 
@@ -157,7 +153,7 @@ end
 Convert a file's `url` to a local cache file.
 """
 function urltopath(cache::HttpCache, url::String)::String
-    rep::Pair{Regex, String} = r"https?://" => ""
+    rep::Pair{Regex,String} = r"https?://" => ""
     return cachedir(cache) * replace(url, rep)
 end
 
@@ -200,13 +196,13 @@ Will return only the most likely file path for the instance document.
 function find_entry_file(cache::HttpCache, dirpath::String)::Union{String,Nothing}
     valid_files::Vector{AbstractString} = []
     for ext in [".htm", ".xml", ".xsd"]
-        for f in readdir(dir_path, join=true)
+        for f in readdir(dir_path, join = true)
             isfile(f) && endswith(lowercase(f), ext) && push!(valid_files, f)
         end
     end
     entry_candidates::Vector{AbstractString} = []
     for file1 in valid_files
-        (filedir, filename) = rsplit(file1, Base.Filesystem.path_separator; limit=2)
+        (filedir, filename) = rsplit(file1, Base.Filesystem.path_separator; limit = 2)
         foundinother::Bool = false
         for file2 in valid_files
             if file1 != file2
@@ -221,7 +217,7 @@ function find_entry_file(cache::HttpCache, dirpath::String)::Union{String,Nothin
         end
         !foundinother && push!(entry_candidates, (file1, fileszie(file1)))
     end
-    sort!(entry_candidates; by=x -> x[2], rev=true)
+    sort!(entry_candidates; by = x -> x[2], rev = true)
     if length(entry_candidates) > 0
         (filepath::String, size) = entry_candidates[1]
         return filepath
