@@ -62,8 +62,14 @@ using Documenter
             cache::HttpCache = HttpCache(cachedir)
             extensionschemapath::String = abspath("./data/example.xsd")
             tax::XbrlXML.TaxonomySchema = parsetaxonomy(extensionschemapath, cache)
-            srttax::XbrlXML.TaxonomySchema =
-                gettaxonomy(tax, "http://fasb.org/srt/2020-01-31")
+            taxonomylut::Dict{AbstractString,XbrlXML.TaxonomySchema} = Dict()
+            XbrlXML.Taxonomy.gettaxonomylut!(tax, taxonomylut)
+            XbrlXML.Taxonomy.normaliseuri!(taxonomylut)
+            srttax::XbrlXML.TaxonomySchema = get(
+                taxonomylut,
+                XbrlXML.Taxonomy.normaliseuri("http://fasb.org/srt/2020-01-31"),
+                nothing,
+            )
             @test length(srttax.concepts) == 489
             @test length(tax.concepts["example_Assets"].labels) == 2
         end
@@ -75,8 +81,14 @@ using Documenter
                 schemaurl::String = "https://www.sec.gov/Archives/edgar/data/320193/000032019321000010/aapl-20201226.xsd"
                 tax = parsetaxonomy_url(schemaurl, cache)
                 @test length(tax.concepts) == 65
-                usgaaptax::XbrlXML.TaxonomySchema =
-                    gettaxonomy(tax, "http://fasb.org/us-gaap/2020-01-31")
+                taxonomylut::Dict{AbstractString,XbrlXML.TaxonomySchema} = Dict()
+                XbrlXML.gettaxonomylut!(tax, taxonomylut)
+                XbrlXML.Taxonomy.normaliseuri!(taxonomylut)
+                usgaaptax::XbrlXML.TaxonomySchema = get(
+                    taxonomylut,
+                    XbrlXML.Taxonomy.normaliseuri("http://fasb.org/us-gaap/2020-01-31"),
+                    nothing,
+                )
                 @test length(usgaaptax.concepts) == 17281
                 @test length(tax.concepts["aapl_MacMember"].labels) == 3
                 rm(cachedir; force = true, recursive = true)

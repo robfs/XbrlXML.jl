@@ -194,11 +194,16 @@ function parsexbrl(
         taxonomy = parsetaxonomy(schema_path, cache)
     end
 
+    taxonomylut::Dict{AbstractString,TaxonomySchema} = Dict()
+    gettaxonomylut!(taxonomy, taxonomylut)
+    normaliseuri!(taxonomylut)
+
     context_dir = _parse_context_elements(
         findall("xbrli:context", root, NAME_SPACES),
         ns_map,
         taxonomy,
         cache,
+        taxonomylut,
     )
     unit_dir = _parse_unit_elements(findall("xbrli:unit", root, NAME_SPACES))
 
@@ -219,7 +224,7 @@ function parsexbrl(
 
         taxonomy_ns::AbstractString = namespace(fact_elem)
         concept_name::AbstractString = fact_elem.name
-        tax = gettaxonomy(taxonomy, taxonomy_ns)
+        tax = get(taxonomylut, normaliseuri(taxonomy_ns), nothing)
         if tax isa Nothing
             tax = _load_common_taxonomy(cache, taxonomy_ns, taxonomy)
         end
@@ -289,6 +294,10 @@ function parseixbrl(
         taxonomy = parsetaxonomy(schema_path, cache)
     end
 
+    taxonomylut::Dict{AbstractString,TaxonomySchema} = Dict()
+    gettaxonomylut!(taxonomy, taxonomylut)
+    normaliseuri!(taxonomylut)
+
     xbrl_resources::EzXML.Node = findfirst(".//ix:resources", root, ns_map)
     xbrl_resources isa Nothing && throw(error("No resources"))
 
@@ -297,6 +306,7 @@ function parseixbrl(
         ns_map,
         taxonomy,
         cache,
+        taxonomylut,
     )
     unit_dir = _parse_unit_elements(findall("xbrli:unit", xbrl_resources, NAME_SPACES))
 
@@ -307,7 +317,7 @@ function parseixbrl(
     for fact_elem in fact_elements
         _update_ns_map!(ns_map, namespaces(fact_elem))
         (taxonomy_prefix, concept_name) = split(fact_elem["name"], ":")
-        tax = gettaxonomy(taxonomy, ns_map[taxonomy_prefix])
+        tax = get(taxonomylut, normaliseuri(ns_map[taxonomy_prefix]), nothing)
         if tax isa Nothing
             tax = _load_common_taxonomy(cache, ns_map[taxonomy_prefix], taxonomy)
         end
@@ -442,6 +452,7 @@ function _parse_context_elements(
     ns_map::Dict,
     taxonomy::TaxonomySchema,
     cache::HttpCache,
+    taxonomylut::Dict{AbstractString,TaxonomySchema},
 )::Dict{String,AbstractContext}
     context_dict::Dict{String,AbstractContext} = Dict()
     for context_elem in context_elements
@@ -482,14 +493,15 @@ function _parse_context_elements(
                     split(strip(explicit_member_elem["dimension"]), ":")
                 (member_prefix, member_concept_name) =
                     split(strip(explicit_member_elem.content), ":")
-                dimension_tax = gettaxonomy(taxonomy, ns_map[dimension_prefix])
+                dimension_tax =
+                    get(taxonomylut, normaliseuri(ns_map[dimension_prefix]), nothing)
                 if dimension_tax isa Nothing
                     dimension_tax =
                         _load_common_taxonomy(cache, ns_map[dimension_prefix], taxonomy)
                 end
                 member_tax =
                     member_prefix == dimension_prefix ? dimension_tax :
-                    gettaxonomy(taxonomy, ns_map[member_prefix])
+                    get(taxonomylut, normaliseuri(ns_map[member_prefix]), nothing)
                 if member_tax isa Nothing
                     member_tax =
                         _load_common_taxonomy(cache, ns_map[member_prefix], taxonomy)
@@ -564,7 +576,7 @@ function _load_common_taxonomy(
     taxonomy::TaxonomySchema,
 )::TaxonomySchema
     tax = parsecommontaxonomy(cache, namespace)
-    tax isa Nothing && throw(error("Taxonomy not found"))
+    tax isa Nothing && throw(TaxonomyNotFound(namespace))
     push!(taxonomy.imports, tax)
     return tax
 end

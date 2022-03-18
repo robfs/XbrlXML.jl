@@ -9,7 +9,7 @@ using ..EzXML, ..Cache, ..Linkbases, ..Exceptions
 import HTTP: unescapeuri
 
 export Concept, TaxonomySchema, ExtendedLinkRole
-export parsetaxonomy, parsecommontaxonomy, parsetaxonomy_url, gettaxonomy
+export parsetaxonomy, parsecommontaxonomy, parsetaxonomy_url, gettaxonomy, gettaxonomylut!
 
 const NAME_SPACES = [
     "xsd" => "http://www.w3.org/2001/XMLSchema",
@@ -415,15 +415,16 @@ mutable struct TaxonomySchema
         new(schema_url, namespace, [], [], [], [], [], [], Dict(), Dict())
 end
 
-function gettaxonomy(schema::TaxonomySchema, url)::Union{TaxonomySchema,Nothing}
-    if compare_uri(schema.namespace, url) || compare_uri(schema.schema_url, url)
-        return schema
+function gettaxonomylut!(schema::TaxonomySchema, lut::Dict)
+    if !(haskey(lut, schema.namespace))
+        lut[schema.namespace] = schema
     end
-    for imported_tax in schema.imports
-        result::Union{TaxonomySchema,Nothing} = gettaxonomy(imported_tax, url)
-        !(result isa Nothing) && return result
+    if !(haskey(lut, schema.schema_url))
+        lut[schema.schema_url] = schema
     end
-    return nothing
+    for importedtax in schema.imports
+        gettaxonomylut!(importedtax, lut)
+    end
 end
 
 function parsecommontaxonomy(cache::HttpCache, namespace)::Union{TaxonomySchema,Nothing}
@@ -569,8 +570,11 @@ function parsetaxonomy(schema_path, cache::HttpCache, schema_url = nothing)::Tax
         for extended_link in label_linkbase.extended_links
             for root_locator in extended_link.root_locators
                 (schema_url, concept_id) = split(unescapeuri(root_locator.href), "#")
+                taxonomylut::Dict{AbstractString,TaxonomySchema} = Dict()
+                gettaxonomylut!(taxonomy, taxonomylut)
+                normaliseuri!(taxonomylut)
                 c_taxonomy::Union{TaxonomySchema,Nothing} =
-                    gettaxonomy(taxonomy, schema_url)
+                    get(taxonomylut, normaliseuri(schema_url), nothing)
 
                 if c_taxonomy isa Nothing
                     if schema_url in values(ns_schema_map)
