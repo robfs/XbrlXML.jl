@@ -34,17 +34,17 @@ function resolve_uri(dir_uri::AbstractString, relative_uri::AbstractString)::Abs
     return absolute_uri
 end
 
+function normaliseuri(uri::AbstractString)::AbstractString
+    return replace(split(uri, "://")[end], r"[\W]+" => "")
+end
+
+function normaliseuri!(uridict::Dict)
+    for (k, v) in uridict
+        uridict[normaliseuri(k)] = pop!(uridict, k)
+    end
+end
+
 
 function compare_uri(uri1::AbstractString, uri2::AbstractString)::Bool
-    if occursin("://", uri1)
-        uri1 = split(uri1, "://")[2]
-    end
-    if occursin("://", uri2)
-        uri2 = split(uri2, "://")[2]
-    end
-
-    m1::Vector{AbstractString} = [m.match for m in collect(eachmatch(r"[\w']+", uri1))]
-    m2::Vector{AbstractString} = [m.match for m in collect(eachmatch(r"[\w']+", uri2))]
-
-    return m1 == m2
+    return normaliseuri(uri1) == normaliseuri(uri2)
 end

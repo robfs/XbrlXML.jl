@@ -9,13 +9,13 @@ using ..EzXML, ..Cache, ..Linkbases, ..Exceptions
 import HTTP: unescapeuri
 
 export Concept, TaxonomySchema, ExtendedLinkRole
-export parsetaxonomy, parsecommontaxonomy, parsetaxonomy_url, gettaxonomy
+export parsetaxonomy, parsecommontaxonomy, parsetaxonomy_url, gettaxonomy, gettaxonomylut!
 
 const NAME_SPACES = [
     "xsd" => "http://www.w3.org/2001/XMLSchema",
     "link" => "http://www.xbrl.org/2003/linkbase",
     "xlink" => "http://www.w3.org/1999/xlink",
-    "xbrldt" => "http://xbrl.org/2005/xbrldt"
+    "xbrldt" => "http://xbrl.org/2005/xbrldt",
 ]
 
 const NS_SCHEMA_MAP = Dict([
@@ -357,16 +357,30 @@ mutable struct Concept
     schema_url::Union{String,Nothing}
     name::String
     type::Union{String,Nothing}
-    substitution_group::Union{String, Nothing}
-    concept_type::Union{String, Nothing}
-    abstract::Union{Bool, Nothing}
-    nillable::Union{Bool, Nothing}
-    period_type::Union{String, Nothing}
-    balance::Union{String, Nothing}
+    substitution_group::Union{String,Nothing}
+    concept_type::Union{String,Nothing}
+    abstract::Union{Bool,Nothing}
+    nillable::Union{Bool,Nothing}
+    period_type::Union{String,Nothing}
+    balance::Union{String,Nothing}
     labels::Vector{Label}
 
-    Concept(role_id::AbstractString, uri::Union{AbstractString,Nothing}, definition::AbstractString) = new(
-        role_id, uri, definition, nothing, nothing, nothing, nothing, nothing, nothing, nothing, []
+    Concept(
+        role_id::AbstractString,
+        uri::Union{AbstractString,Nothing},
+        definition::AbstractString,
+    ) = new(
+        role_id,
+        uri,
+        definition,
+        nothing,
+        nothing,
+        nothing,
+        nothing,
+        nothing,
+        nothing,
+        nothing,
+        [],
     )
 end
 
@@ -374,13 +388,15 @@ mutable struct ExtendedLinkRole
     xml_id::String
     uri::String
     definition::String
-    definition_link::Union{ExtendedLink, Nothing}
-    presentation_link::Union{ExtendedLink, Nothing}
-    calculation_link::Union{ExtendedLink, Nothing}
+    definition_link::Union{ExtendedLink,Nothing}
+    presentation_link::Union{ExtendedLink,Nothing}
+    calculation_link::Union{ExtendedLink,Nothing}
 
-    ExtendedLinkRole(role_id::AbstractString, uri::AbstractString, definition::AbstractString) = new(
-        role_id, uri, definition, nothing, nothing, nothing
-    )
+    ExtendedLinkRole(
+        role_id::AbstractString,
+        uri::AbstractString,
+        definition::AbstractString,
+    ) = new(role_id, uri, definition, nothing, nothing, nothing)
 end
 
 mutable struct TaxonomySchema
@@ -392,32 +408,37 @@ mutable struct TaxonomySchema
     def_linkbases::Vector{Linkbase}
     cal_linkbases::Vector{Linkbase}
     pre_linkbases::Vector{Linkbase}
-    concepts::Dict{String, Concept}
-    name_id_map::Dict{String, String}
+    concepts::Dict{String,Concept}
+    name_id_map::Dict{String,String}
 
-    TaxonomySchema(schema_url::AbstractString, namespace::AbstractString) = new(
-        schema_url, namespace, [], [], [], [], [], [], Dict(), Dict()
-    )
+    TaxonomySchema(schema_url::AbstractString, namespace::AbstractString) =
+        new(schema_url, namespace, [], [], [], [], [], [], Dict(), Dict())
 end
 
-function gettaxonomy(schema::TaxonomySchema, url)::Union{TaxonomySchema, Nothing}
-    if compare_uri(schema.namespace, url) || compare_uri(schema.schema_url, url)
-        return schema
+function gettaxonomylut!(schema::TaxonomySchema, lut::Dict)
+    if !(haskey(lut, schema.namespace))
+        lut[schema.namespace] = schema
     end
-    for imported_tax in schema.imports
-        result::Union{TaxonomySchema, Nothing} = gettaxonomy(imported_tax, url)
-        !(result isa Nothing) && return result
+    if !(haskey(lut, schema.schema_url))
+        lut[schema.schema_url] = schema
     end
+    for importedtax in schema.imports
+        gettaxonomylut!(importedtax, lut)
+    end
+end
+
+function parsecommontaxonomy(cache::HttpCache, namespace)::Union{TaxonomySchema,Nothing}
+    haskey(NS_SCHEMA_MAP, namespace) &&
+        return parsetaxonomy_url(NS_SCHEMA_MAP[namespace], cache)
     return nothing
 end
 
-function parsecommontaxonomy(cache::HttpCache, namespace)::Union{TaxonomySchema, Nothing}
-    haskey(NS_SCHEMA_MAP, namespace) && return parsetaxonomy_url(NS_SCHEMA_MAP[namespace], cache)
-    return nothing
-end
-
-@memoize LRU{Tuple{AbstractString, HttpCache}, TaxonomySchema}(maxsize=60) function parsetaxonomy_url(schema_url::AbstractString, cache::HttpCache)::TaxonomySchema
-    !startswith(schema_url, "http") && throw("This function only parses remotely saved taxonomies.")
+@memoize LRU{Tuple{AbstractString,HttpCache},TaxonomySchema}(maxsize = 60) function parsetaxonomy_url(
+    schema_url::AbstractString,
+    cache::HttpCache,
+)::TaxonomySchema
+    !startswith(schema_url, "http") &&
+        throw("This function only parses remotely saved taxonomies.")
     schema_path::AbstractString = cachefile(cache, schema_url)
     return parsetaxonomy(schema_path, cache, schema_url)
 end
@@ -427,7 +448,7 @@ end
 
 Parse a given taxonomy
 """
-function parsetaxonomy(schema_path, cache::HttpCache, schema_url=nothing)::TaxonomySchema
+function parsetaxonomy(schema_path, cache::HttpCache, schema_url = nothing)::TaxonomySchema
 
     # Implement errors
     ns_schema_map::Dict{String,String} = NS_SCHEMA_MAP
@@ -435,7 +456,9 @@ function parsetaxonomy(schema_path, cache::HttpCache, schema_url=nothing)::Taxon
     root::EzXML.Node = doc.root
     target_ns::AbstractString = root["targetNamespace"]
 
-    taxonomy::TaxonomySchema = schema_url isa Nothing ? TaxonomySchema(schema_path, target_ns) : TaxonomySchema(schema_url, target_ns)
+    taxonomy::TaxonomySchema =
+        schema_url isa Nothing ? TaxonomySchema(schema_path, target_ns) :
+        TaxonomySchema(schema_url, target_ns)
 
     import_elements::Vector{EzXML.Node} = findall("xsd:import", root, NAME_SPACES)
 
@@ -452,12 +475,16 @@ function parsetaxonomy(schema_path, cache::HttpCache, schema_url=nothing)::Taxon
         end
     end
 
-    role_type_elements::Vector{EzXML.Node} = findall("xsd:annotation/xsd:appinfo/link:roleType", root, NAME_SPACES)
+    role_type_elements::Vector{EzXML.Node} =
+        findall("xsd:annotation/xsd:appinfo/link:roleType", root, NAME_SPACES)
 
     for elr in role_type_elements
         elr_definition = findfirst("link:definition", elr, NAME_SPACES)
         (elr_definition isa Nothing || elr_definition.content == "") && continue
-        push!(taxonomy.link_roles, ExtendedLinkRole(elr["id"], elr["roleURI"], strip(elr_definition.content)))
+        push!(
+            taxonomy.link_roles,
+            ExtendedLinkRole(elr["id"], elr["roleURI"], strip(elr_definition.content)),
+        )
     end
 
     for element in findall("xsd:element", root, NAME_SPACES)
@@ -467,21 +494,30 @@ function parsetaxonomy(schema_path, cache::HttpCache, schema_url=nothing)::Taxon
 
         concept::Concept = Concept(el_id, schema_url, el_name)
         concept.type = haskey(element, "type") ? element["type"] : nothing
-        concept.nillable = haskey(element, "nillable") ? parse(Bool, element["nillable"]) : false
-        concept.abstract = haskey(element, "abstract") ? parse(Bool, element["abstract"]) : false
-        concept.period_type = haskey(element, "xbrli:periodType") ? element["xbrli:periodType"] : nothing
-        concept.balance = haskey(element, "xbrli:balance") ? element["xbrli:balance"] : nothing
-        concept.substitution_group = haskey(element, "substitutionGroup") ? split(element["substitutionGroup"], ":")[end] : nothing
+        concept.nillable =
+            haskey(element, "nillable") ? parse(Bool, element["nillable"]) : false
+        concept.abstract =
+            haskey(element, "abstract") ? parse(Bool, element["abstract"]) : false
+        concept.period_type =
+            haskey(element, "xbrli:periodType") ? element["xbrli:periodType"] : nothing
+        concept.balance =
+            haskey(element, "xbrli:balance") ? element["xbrli:balance"] : nothing
+        concept.substitution_group =
+            haskey(element, "substitutionGroup") ?
+            split(element["substitutionGroup"], ":")[end] : nothing
 
         taxonomy.concepts[concept.xml_id] = concept
         taxonomy.name_id_map[concept.name] = concept.xml_id
     end
 
-    linkbase_ref_elements::Vector{EzXML.Node} = findall("xsd:annotation/xsd:appinfo/link:linkbaseRef", root, NAME_SPACES)
+    linkbase_ref_elements::Vector{EzXML.Node} =
+        findall("xsd:annotation/xsd:appinfo/link:linkbaseRef", root, NAME_SPACES)
     for linkbase_ref in linkbase_ref_elements
         linkbase_uri = linkbase_ref["xlink:href"]
         role = haskey(linkbase_ref, "xlink:role") ? linkbase_ref["xlink:role"] : nothing
-        linkbase_type = role isa Nothing ? Linkbases.guess_linkbase_role(linkbase_uri) : Linkbases.get_type_from_role(role)
+        linkbase_type =
+            role isa Nothing ? Linkbases.guess_linkbase_role(linkbase_uri) :
+            Linkbases.get_type_from_role(role)
 
         if startswith(linkbase_uri, "http")
             linkbase = parselinkbase_url(linkbase_uri, linkbase_type, cache)
@@ -501,7 +537,8 @@ function parsetaxonomy(schema_path, cache::HttpCache, schema_url=nothing)::Taxon
     end
 
     for elr in taxonomy.link_roles
-        for extended_def_links in [def_linkbase.extended_links for def_linkbase in taxonomy.def_linkbases]
+        for extended_def_links in
+            [def_linkbase.extended_links for def_linkbase in taxonomy.def_linkbases]
             for extended_def_link in extended_def_links
                 if split(extended_def_link.elr_id, "#")[2] == elr.xml_id
                     elr.definition_link = extended_def_link
@@ -509,7 +546,8 @@ function parsetaxonomy(schema_path, cache::HttpCache, schema_url=nothing)::Taxon
                 end
             end
         end
-        for extended_pre_links in [pre_linkbase.extended_links for pre_linkbase in taxonomy.pre_linkbases]
+        for extended_pre_links in
+            [pre_linkbase.extended_links for pre_linkbase in taxonomy.pre_linkbases]
             for extended_pre_link in extended_pre_links
                 if split(extended_pre_link.elr_id, "#")[2] == elr.xml_id
                     elr.presentation_link = extended_pre_link
@@ -517,7 +555,8 @@ function parsetaxonomy(schema_path, cache::HttpCache, schema_url=nothing)::Taxon
                 end
             end
         end
-        for extended_cal_links in [cal_linkbase.extended_links for cal_linkbase in taxonomy.cal_linkbases]
+        for extended_cal_links in
+            [cal_linkbase.extended_links for cal_linkbase in taxonomy.cal_linkbases]
             for extended_cal_link in extended_cal_links
                 if split(extended_cal_link.elr_id, "#")[2] == elr.xml_id
                     elr.calculation_link = extended_cal_link
@@ -531,7 +570,11 @@ function parsetaxonomy(schema_path, cache::HttpCache, schema_url=nothing)::Taxon
         for extended_link in label_linkbase.extended_links
             for root_locator in extended_link.root_locators
                 (schema_url, concept_id) = split(unescapeuri(root_locator.href), "#")
-                c_taxonomy::Union{TaxonomySchema,Nothing} = gettaxonomy(taxonomy, schema_url)
+                taxonomylut::Dict{AbstractString,TaxonomySchema} = Dict()
+                gettaxonomylut!(taxonomy, taxonomylut)
+                normaliseuri!(taxonomylut)
+                c_taxonomy::Union{TaxonomySchema,Nothing} =
+                    get(taxonomylut, normaliseuri(schema_url), nothing)
 
                 if c_taxonomy isa Nothing
                     if schema_url in values(ns_schema_map)

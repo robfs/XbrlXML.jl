@@ -119,18 +119,17 @@ end
 struct RegistryNotSupported <: AbstractTransformationException
     namespace::AbstractString
     message::String
-    RegistryNotSupported(namespace) = new(
-        namespace,
-        "$(namespace) registry not currently supported."
-    )
+    RegistryNotSupported(namespace) =
+        new(namespace, "$(namespace) registry not currently supported.")
 end
 struct InvalidTransformation <: AbstractTransformationException
     namespace::AbstractString
     formatcode::AbstractString
     message::String
     InvalidTransformation(namespace, formatcode) = new(
-        namespace, formatcode,
-        "$(formatcode) transformation rule not implemented in $(namespace)"
+        namespace,
+        formatcode,
+        "$(formatcode) transformation rule not implemented in $(namespace)",
     )
 end
 struct TransformationNotImplemented <: AbstractTransformationException
@@ -140,8 +139,9 @@ struct TransformationNotImplemented <: AbstractTransformationException
 
     TransformationNotImplemented(message) = new("", "", message)
     TransformationNotImplemented(namespace, formatcode) = new(
-        namespace, formatcode,
-        "transformation $(formatcode) rule of registry $(namespace) not yet implemented"
+        namespace,
+        formatcode,
+        "transformation $(formatcode) rule of registry $(namespace) not yet implemented",
     )
 end
 
@@ -158,9 +158,8 @@ end
 
 _notimplemented(value::AbstractString) = throw(TransformationNotImplemented(value))
 _monthformat(value, pos::Integer)::String = length(split(value, " ")[pos]) == 3 ? "u" : "U"
-_dateformat(value, format::AbstractString, fmt::AbstractString)::String = Dates.format(
-    _yearnorm(Date(value, DateFormat(format))), fmt
-)
+_dateformat(value, format::AbstractString, fmt::AbstractString)::String =
+    Dates.format(_yearnorm(Date(value, DateFormat(format))), fmt)
 
 # region ixt mappings
 
@@ -229,7 +228,11 @@ function _ballotbox(value)
     if (value == "&#9745;" || value == "☑" || value == "&#9746;" || value == "☒")
         return "true"
     else
-        throw(TransformationException("Invalid input $(value) for ballotbox transformation rule"))
+        throw(
+            TransformationException(
+                "Invalid input $(value) for ballotbox transformation rule",
+            ),
+        )
     end
 end
 
@@ -416,7 +419,11 @@ _IXTSEC = Dict([
     "entityfilercategoryen" => _entityfilercategoryen,
 ])
 
-function normalize(namespace::AbstractString, formatcode::AbstractString, value::AbstractString)::AbstractString
+function normalize(
+    namespace::AbstractString,
+    formatcode::AbstractString,
+    value::AbstractString,
+)::AbstractString
     value = replace(strip(lowercase(value)), '\ua0' => " ")
     if startswith(formatcode, "date")
         value = strip(replace(value, r"[^\d|^\w]+" => " ", r"\bsept\b" => "sep"))
@@ -433,9 +440,8 @@ function normalize(namespace::AbstractString, formatcode::AbstractString, value:
         end
     catch e
         e isa KeyError && throw(InvalidTransformation(namespace, formatcode))
-        e isa TransformationNotImplemented && throw(
-            TransformationNotImplemented(namespace, formatcode)
-        )
+        e isa TransformationNotImplemented &&
+            throw(TransformationNotImplemented(namespace, formatcode))
         rethrow(e)
     end
 end
